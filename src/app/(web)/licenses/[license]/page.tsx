@@ -20,7 +20,7 @@ export default function page({params}: Props) {
             <h2 className='text-3xl font-extrabold capitalize'>{license.name}</h2>
           </div>
           <div>
-            <Link href={'/login'} className='px-8 text-sm py-2 rounded font-medium tracking-wide bg-accent text-accent-foreground'>Apply</Link>
+            <Link href={`/licenses/${license.id}/apply`} className='px-8 text-sm py-2 rounded font-medium tracking-wide bg-accent text-accent-foreground'>Apply</Link>
           </div>
         </div>
       </div>
