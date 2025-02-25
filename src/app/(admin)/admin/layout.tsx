@@ -4,7 +4,7 @@ import React, { PropsWithChildren } from 'react'
 
 export default function layout({children}: PropsWithChildren) {
   return (
-    <div className='grid grid-cols-[256px,1fr]'>
+    <div className='grid grid-cols-[256px,1fr] items-start'>
       <DashboardSidebar />
       <div className='h-dvh flex flex-col'>
         <DashboardNavbar />

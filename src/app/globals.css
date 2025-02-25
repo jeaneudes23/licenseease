@@ -83,7 +83,8 @@
   }
 
   input.primary, 
-  textarea.primary {
+  textarea.primary,
+  select.primary {
     @apply border p-2 rounded-md
   }
 }

@@ -15,7 +15,7 @@ export default function page() {
         <Card>
           <CardHeader>
           </CardHeader>
-          <CardContent>
+          <CardContent className='grid'>
             <LicensesDataTable />
           </CardContent>
         </Card>

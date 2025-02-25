@@ -3,7 +3,7 @@ import { applications } from '../schema/applicationSchema'
 
 export default function ApplicationsDataTable() {
   return (
-    <Table>
+    <Table className='w-full min-w-[769px]'>
       <TableHeader>
         <TableRow>
           <TableHead>User</TableHead>

@@ -42,7 +42,7 @@ export default function page({ params }: Props) {
           <CardContent>
             <div className='grid divide-y text-sm'>
               {license.application_requirements.map((req, index) =>
-                <div key={index} className={`flex justify-between items-center gap-6 p-2 ${index % 3 == 0 ? 'bg-destructive/10 ' : ''}`}>
+                <div key={index} className={`flex justify-between items-center gap-6 p-2 ${index % 3 == 0 ? 'bg-destructive/10 ' : 'bg-accent/10'}`}>
                   <p className='line-clamp-1 font-medium'>{req}</p>
                   <div className='flex items-center gap-2'>
                     {index % 3 == 0 ?

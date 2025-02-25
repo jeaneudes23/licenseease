@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Upload } from "lucide-react"
+import { File, Upload } from "lucide-react"
 
 export default function UploadFileDialog() {
   return (
@@ -19,16 +19,16 @@ export default function UploadFileDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          {/* <DialogTitle>Upload Document?</DialogTitle> */}
-          <form action="" className="text-sm">
+          <DialogTitle>Upload {'Document name'}</DialogTitle>
+          <form action="" className="text-sm pt-3">
             <div className="grid gap-3">
               <div className="grid gap-1">
-                <label htmlFor="name" className="primary">Document Name</label>
-                <input type="text" placeholder="Document Name" readOnly className="primary" />
-              </div>
-              <div className="grid gap-1">
-                <label htmlFor="name" className="primary">Upload Document</label>
-                <input type="file" className="primary" />
+                <label htmlFor="file" className="primary py-4 border-2 rounded-md border-dashed grid place-content-center gap-2 cursor-pointer">
+                  <span className="size-10 bg-primary/10 justify-self-center grid place-content-center rounded-full text-primary"><File className="size-5"/></span>
+                  <p className="text-primary">Click To Upload</p>
+                  <p>Max file size: 25MB</p>
+                </label>
+                <input type="file" id="file" name="file" className="primary" />
               </div>
             </div>
           </form>

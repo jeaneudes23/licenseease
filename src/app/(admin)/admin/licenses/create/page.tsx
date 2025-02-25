@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import LicenseCreateForm from '@/features/licenses/components/LicenseCreateForm'
 
 export default function page() {
   return (
@@ -10,7 +11,7 @@ export default function page() {
       <CardHeader>
       </CardHeader>
       <CardContent>
-        {/* <CategoriesCreateForm /> */}
+        <LicenseCreateForm />
       </CardContent>
     </Card>
   </main>

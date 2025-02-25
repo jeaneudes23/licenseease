@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import UserCompaniesDatatable from '@/features/companies/components/UserCompaniesDataTable'
+import CompaniesDataTable from '@/features/companies/components/CompaniesDataTable'
 
 export default function page() {
   return (
@@ -9,7 +9,7 @@ export default function page() {
         <CardTitle>Companies</CardTitle>
       </CardHeader>
       <CardContent>
-        <UserCompaniesDatatable />
+        <CompaniesDataTable />
       </CardContent>
     </Card>
   </main>
