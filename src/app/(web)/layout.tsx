@@ -1,5 +1,6 @@
 import WebFooter from '@/components/WebFooter'
 import WebNavbar from '@/components/WebNavbar'
+import TawkLiveChat from '@/features/accounts/components/TawkLiveChat'
 import React, { PropsWithChildren } from 'react'
 
 export default function WebLayout({ children }: PropsWithChildren) {
@@ -10,6 +11,7 @@ export default function WebLayout({ children }: PropsWithChildren) {
         {children}
       </div>
       <WebFooter />
+      <TawkLiveChat />
     </>
   )
 }

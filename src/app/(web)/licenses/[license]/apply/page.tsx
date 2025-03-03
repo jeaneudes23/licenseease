@@ -1,5 +1,5 @@
 import SubmitButton from '@/components/SubmitButton'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import RemoveFileDialog from '@/features/files/components/RemoveFileDialog'
 import UploadFileDialog from '@/features/files/components/UploadFileDialog'
@@ -31,7 +31,7 @@ export default function page({ params }: Props) {
           </div>
         </div>
       </div>
-      <div className="max-w-xl mx-auto py-12">
+      <div className="max-w-xl mx-auto py-12 space-y-12">
         <Card>
           <CardHeader>
             <div className='flex justify-between items-center'>
@@ -58,6 +58,21 @@ export default function page({ params }: Props) {
                   </div>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='flex justify-between items-center mb-4'>
+              <h3 className='font-medium'>Application Fee</h3>
+              <Link className={buttonVariants()} href={`pay?type=first-time-application-fee`}>Pay {license.first_time_application_fee}</Link>
+            </div>
+            <div className='flex justify-between items-center'>
+              <h3 className='font-medium'>License Fee</h3>
+              <Link className={buttonVariants()} href={`pay?type=first-time-license-fee`}>Pay {license.first_time_license_fee}</Link>
             </div>
           </CardContent>
         </Card>
