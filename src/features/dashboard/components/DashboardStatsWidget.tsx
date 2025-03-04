@@ -16,7 +16,7 @@ const ICONS: Record<string, ReactNode> = {
 
 export default function DashboardStatsWidget() {
   return (
-    <div className='grid grid-cols-3 gap-8'>
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-8'>
       {Object.keys(STATS).map(status =>
         <Card key={status} >
           <CardHeader>
