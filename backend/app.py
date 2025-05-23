@@ -9,7 +9,7 @@ from functools import wraps
 from transformers import pipeline
 
 import fitz  #
-nlp = spacy.load("en_core_web_sm")
+
 # ─── Load environment variables ─────────────────────────────────────────────
 load_dotenv()
 GOOGLE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -157,10 +157,10 @@ def get_services():
     return jsonify(services), 200
 
 
-@app.route('/get_services', methods=['POST', 'GET'])
-def get_services():
-    print("Fetching services from Firestore")
-    docs = db.collection('services').stream()
+@app.route('/get_applications', methods=['POST', 'GET'])
+def get_applications():
+    print("Fetching Applications from Firestore")
+    docs = db.collection('applications').stream()
     services = []
     for doc in docs:
         item = doc.to_dict()
