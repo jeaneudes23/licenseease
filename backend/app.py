@@ -5,6 +5,7 @@ from flask_cors import CORS
 from firebase_admin import credentials, firestore, initialize_app, auth as admin_auth
 from dotenv import load_dotenv
 from functools import wraps
+from collections import defaultdict
 
 from transformers import pipeline
 
@@ -26,7 +27,7 @@ db = firestore.client()
 
 # ─── Flask setup ───────────────────────────────────────────────────────────
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*")
 
 validator = pipeline(
     "text2text-generation",
@@ -54,9 +55,13 @@ def login_required(f):
     return wrapper
 
 # ─── Endpoint: Sign up new users ───────────────────────────────────────────
-@app.route('/signup', methods=['POST'])
+@app.route('/signup', methods=['POST', 'OPTIONS'])
 def signup():
-    data = request.get_json(force=True)
+    if request.method == 'OPTIONS':
+        # Handle preflight request for CORS
+        return jsonify({'message': 'CORS preflight response'}), 200
+    data = request.get_json(force=False)
+    print(data)
     email = data.get('email')
     password = data.get('password')
     if not email or not password:
@@ -64,9 +69,9 @@ def signup():
     try:
         # Create user in Firebase Auth
         user_record = admin_auth.create_user(email=email, password=password)
-
+        print(f"Created user: {user_record.uid}")
         # Optionally store user profile in Firestore
-        profile = data.get('profile', {})
+        profile = data.get('profile', {'name': data['name'], 'role':"user", 'email': email, 'uid': user_record.uid})
         if profile:
             db.collection('users').document(user_record.uid).set(profile)
 
@@ -77,11 +82,15 @@ def signup():
             'customToken': custom_token.decode('utf-8')
         }), 201
     except Exception as e:
+        print(f"Error creating user: {e}")
         return jsonify({'error': str(e)}), 400
 
 # ─── Endpoint: Sign in existing users ───────────────────────────────────────
 @app.route('/signin', methods=['POST'])
 def signin():
+    if request.method == 'OPTIONS':
+        # Handle preflight request for CORS
+        return jsonify({'message': 'CORS preflight response'}), 200
     data = request.get_json(force=True)
     email = data.get('email')
     password = data.get('password')
@@ -97,7 +106,16 @@ def signin():
     }
     resp = requests.post(url, json=payload)
     if resp.ok:
-        return jsonify(resp.json()), 200
+        data = resp.json()
+        # print(data)
+        data['authToken'] = data.get('idToken', None)
+        profile = db.collection('users').document(data['localId']).get()
+        if profile.exists:
+            data['profile'] = profile.to_dict()
+        else:
+            data['profile'] = {'uid': data['localId'], 'email': email, 'role': 'user', 'name': email.split('@')[0]}
+        print(data)
+        return jsonify(data), 200
     else:
         return jsonify(resp.json()), resp.status_code
 
@@ -146,15 +164,69 @@ def create_service():
         return jsonify({'error': str(e)}), 400
 # ─── Endpoint: List all services ────────────────────────────────────────────
 @app.route('/get_services', methods=['POST', 'GET'])
+@app.route('/services', methods=['GET'])
 def get_services():
     print("Fetching services from Firestore")
     docs = db.collection('services').stream()
-    services = []
+
+    # 1) Read all docs and flatten requirements
+    raw_items = []
     for doc in docs:
         item = doc.to_dict()
         item['id'] = doc.id
-        services.append(item)
-    return jsonify(services), 200
+
+        # Flatten nested { "documents": [...] } into a plain list
+        app_reqs = item.get('application_requirements', {})
+        if isinstance(app_reqs, dict) and 'documents' in app_reqs:
+            item['application_requirements'] = app_reqs['documents']
+        else:
+            # If the Firestore structure is already a list or missing, fall back gracefully
+            item['application_requirements'] = app_reqs if isinstance(app_reqs, list) else []
+
+        renew_reqs = item.get('renewal_requirements', {})
+        if isinstance(renew_reqs, dict) and 'documents' in renew_reqs:
+            item['renewal_requirements'] = renew_reqs['documents']
+        else:
+            item['renewal_requirements'] = renew_reqs if isinstance(renew_reqs, list) else []
+
+        # Ensure numeric fields stay numeric; you can convert to strings here if you prefer
+        # item['validity'] = str(item.get('validity', ''))
+        # item['first_time_license_fee'] = f"{item.get('first_time_license_fee', '')} USD"
+        # …etc., if you need string formatting
+
+        raw_items.append(item)
+
+    print("Raw items:", raw_items)
+
+    # 2) Group by `category` field (each document must have a 'category' key)
+    categories_dict: dict[str, list[dict]] = defaultdict(list)
+    for svc in raw_items:
+        cat_name = svc.get('category', 'Uncategorized')
+        # Build the license‐object exactly as the frontend expects
+        license_obj = {
+            "id": svc["id"],
+            "name": svc.get("name", ""),
+            "application_requirements": svc.get("application_requirements", []),
+            "renewal_requirements": svc.get("renewal_requirements", []),
+            "first_time_application_fee": svc.get("first_time_application_fee", 0),
+            "renewal_application_fee": svc.get("renewal_application_fee", 0),
+            "first_time_license_fee": svc.get("first_time_license_fee", 0),
+            "renewal_license_fee": svc.get("renewal_license_fee", 0),
+            "validity": svc.get("validity", 0),
+            "processing_time": svc.get("processing_time", 0),
+        }
+        categories_dict[cat_name].append(license_obj)
+
+    # 3) Transform dict into a list of { name, licenses }
+    categories = []
+    for name, licenses in categories_dict.items():
+        categories.append({
+            "name": name,
+            "licenses": licenses
+        })
+
+    print("Grouped categories:", categories)
+    return jsonify(categories), 200
 
 
 @app.route('/get_applications', methods=['POST', 'GET'])
