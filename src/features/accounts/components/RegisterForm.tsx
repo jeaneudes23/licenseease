@@ -6,6 +6,8 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { auth } from '@/firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import SubmitButton from '@/components/SubmitButton'
 import Link from 'next/link'
 
@@ -32,24 +34,27 @@ export default function RegisterForm() {
 
     setLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:5000/signup', {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const token = await userCredential.user.getIdToken()
+      const uid = userCredential.user.uid
+
+      // Send UID and role to backend to assign default role
+      const res = await fetch('http://localhost:5000/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ uid, role: 'client' }) // default role
       })
 
-      const data = await res.json()
       if (!res.ok) {
-        setError(data.message || 'Registration failed.')
-      } else {
-        setSuccess('Registration successful! Redirecting...')
-        setTimeout(() => {
-          router.push('/login')
-        }, 1500)
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to assign role')
       }
-    } catch (err) {
+
+      setSuccess('Registration successful! Redirecting...')
+      setTimeout(() => router.push('/login'), 1500)
+    } catch (err: any) {
       console.error(err)
-      setError('Something went wrong. Please try again.')
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -59,9 +64,7 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="grid gap-6 text-sm">
       <div className="grid gap-3">
         <div className="grid gap-1">
-          <label htmlFor="name" className="primary">
-            Name
-          </label>
+          <label htmlFor="name" className="primary">Name</label>
           <input
             id="name"
             type="text"
@@ -71,11 +74,8 @@ export default function RegisterForm() {
             required
           />
         </div>
-
         <div className="grid gap-1">
-          <label htmlFor="email" className="primary">
-            Email address
-          </label>
+          <label htmlFor="email" className="primary">Email address</label>
           <input
             id="email"
             type="email"
@@ -85,11 +85,8 @@ export default function RegisterForm() {
             required
           />
         </div>
-
         <div className="grid gap-1">
-          <label htmlFor="password" className="primary">
-            Password
-          </label>
+          <label htmlFor="password" className="primary">Password</label>
           <input
             id="password"
             type="password"
@@ -99,11 +96,8 @@ export default function RegisterForm() {
             required
           />
         </div>
-
         <div className="grid gap-1">
-          <label htmlFor="password2" className="primary">
-            Confirm password
-          </label>
+          <label htmlFor="password2" className="primary">Confirm password</label>
           <input
             id="password2"
             type="password"
@@ -124,9 +118,7 @@ export default function RegisterForm() {
         </SubmitButton>
         <p className="text-center">
           Already have an account?{' '}
-          <Link href="/login" className="text-primary">
-            Login
-          </Link>
+          <Link href="/login" className="text-primary">Login</Link>
         </p>
       </div>
     </form>
