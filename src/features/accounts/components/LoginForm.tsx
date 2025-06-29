@@ -6,13 +6,13 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '@/firebase'
 import SubmitButton from '@/components/SubmitButton'
 import Link from 'next/link'
 
 export default function LoginForm() {
   const router = useRouter()
-
-  // Form state
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,6 +24,14 @@ export default function LoginForm() {
     setLoading(true)
 
     try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const token = await userCredential.user.getIdToken()
+
+      // Send token to backend to retrieve role and user info
+      const res = await fetch('http://localhost:5000/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
       const res = await fetch('http://127.0.0.1:5000/signin', {
         method: 'POST',
         headers: {
@@ -35,6 +43,23 @@ export default function LoginForm() {
       const data = await res.json()
 
       if (!res.ok) {
+        throw new Error(data.error || 'Login failed.')
+      }
+
+      localStorage.setItem('authToken', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+
+      // Redirect based on user role
+      if (data.user.role === 'admin') {
+        router.push('/admin-dashboard')
+      } else if (data.user.role === 'client') {
+        router.push('/client-dashboard')
+      } else {
+        router.push('/officer-dashboard')
+      }
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err.message)
         // Show error from backend (e.g. "Invalid credentials")
         setError(data.message || 'Login failed.')
       } else {
@@ -65,6 +90,7 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit} className="grid gap-6 text-sm">
       <div className="grid gap-3">
         <div className="grid gap-1">
+          <label htmlFor="email" className="primary">Email address</label>
           <label htmlFor="email" className="primary">
             Email address
           </label>
@@ -78,6 +104,8 @@ export default function LoginForm() {
           />
         </div>
         <div className="grid gap-1">
+
+          <label htmlFor="password" className="primary">Password</label>
           <label htmlFor="password" className="primary">
             Password
           </label>
@@ -100,6 +128,9 @@ export default function LoginForm() {
         </SubmitButton>
         <p className="text-center">
           Don’t have an account?{' '}
+
+          <Link href="/register" className="text-primary">Register</Link>
+
           <Link href="/register" className="text-primary">
             Register
           </Link>

@@ -6,6 +6,10 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+
+import { auth } from '@/firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+
 import SubmitButton from '@/components/SubmitButton'
 import Link from 'next/link'
 
@@ -32,6 +36,27 @@ export default function RegisterForm() {
 
     setLoading(true)
     try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      const token = await userCredential.user.getIdToken()
+      const uid = userCredential.user.uid
+
+      // Send UID and role to backend to assign default role
+      const res = await fetch('http://localhost:5000/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, role: 'client' }) // default role
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to assign role')
+      }
+
+      setSuccess('Registration successful! Redirecting...')
+      setTimeout(() => router.push('/login'), 1500)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message)
       const res = await fetch('http://127.0.0.1:5000/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,6 +84,7 @@ export default function RegisterForm() {
     <form onSubmit={handleSubmit} className="grid gap-6 text-sm">
       <div className="grid gap-3">
         <div className="grid gap-1">
+          <label htmlFor="name" className="primary">Name</label>
           <label htmlFor="name" className="primary">
             Name
           </label>
@@ -73,6 +99,8 @@ export default function RegisterForm() {
         </div>
 
         <div className="grid gap-1">
+          <label htmlFor="email" className="primary">Email address</label>
+
           <label htmlFor="email" className="primary">
             Email address
           </label>
@@ -87,6 +115,8 @@ export default function RegisterForm() {
         </div>
 
         <div className="grid gap-1">
+          <label htmlFor="password" className="primary">Password</label>
+
           <label htmlFor="password" className="primary">
             Password
           </label>
@@ -101,9 +131,12 @@ export default function RegisterForm() {
         </div>
 
         <div className="grid gap-1">
+          <label htmlFor="password2" className="primary">Confirm password</label>
+
           <label htmlFor="password2" className="primary">
             Confirm password
           </label>
+
           <input
             id="password2"
             type="password"
@@ -124,6 +157,8 @@ export default function RegisterForm() {
         </SubmitButton>
         <p className="text-center">
           Already have an account?{' '}
+
+          <Link href="/login" className="text-primary">Login</Link>
           <Link href="/login" className="text-primary">
             Login
           </Link>
