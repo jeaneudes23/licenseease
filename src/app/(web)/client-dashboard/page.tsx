@@ -1,27 +1,29 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { LogOut, Moon, Settings, User, FileText, LayoutDashboard } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { User2, FileText, GaugeCircle, Settings } from 'lucide-react'
+import { getAuth, signOut } from 'firebase/auth'
+import app from '@/firebase'
 
 export default function ClientDashboard() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'profile' | 'dashboard' | 'license' | 'settings'>('profile')
-  const [user, setUser] = useState<{ email: string; uid: string; role: string } | null>(null)
-  const [applications, setApplications] = useState<any[]>([])
-  const [form, setForm] = useState({ licenseType: '', description: '', document: null as File | null })
+  const auth = getAuth(app)
+
+  const [tab, setTab] = useState('profile')
+  const [form, setForm] = useState({
+    licenseType: '',
+    description: '',
+    document: null as File | null,
+  })
+  const [applications, setApplications] = useState([])
   const [message, setMessage] = useState('')
+  const [dark, setDark] = useState(false)
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null
-  const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null
-
-  useEffect(() => {
-    if (!token || !storedUser) return router.push('/login')
-    setUser(JSON.parse(storedUser))
-    fetchApplications()
-  }, [])
+  const toggleTheme = () => setDark(!dark)
 
   const fetchApplications = async () => {
+    const token = localStorage.getItem('authToken')
     try {
       const res = await fetch('http://127.0.0.1:5000/applications', {
         headers: { Authorization: `Bearer ${token}` },
@@ -29,14 +31,14 @@ export default function ClientDashboard() {
       const data = await res.json()
       if (res.ok) setApplications(data)
     } catch (err) {
-      console.error('Fetch error:', err)
+      console.error('Error fetching applications:', err)
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.licenseType || !form.description || !form.document) return setMessage('All fields required')
-
+    const token = localStorage.getItem('authToken')
+    if (!form.licenseType || !form.description || !form.document) return setMessage('All fields required.')
     const formData = new FormData()
     formData.append('license_type', form.licenseType)
     formData.append('description', form.description)
@@ -50,100 +52,115 @@ export default function ClientDashboard() {
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage('✅ Submitted successfully!')
+        setMessage('✅ Submitted!')
         setForm({ licenseType: '', description: '', document: null })
         fetchApplications()
       } else {
-        setMessage(data.error || 'Submission failed')
+        setMessage(data.error || 'Something went wrong.')
       }
-    } catch {
-      setMessage('Submission failed')
+    } catch (err) {
+      setMessage('Failed to submit application.')
     }
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return (
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-2">Profile</h2>
-            <p>Email: {user?.email}</p>
-            <p>UID: {user?.uid}</p>
-            <p>Role: {user?.role}</p>
-          </div>
-        )
-      case 'dashboard':
-        return (
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-2">Your Activities</h2>
-            <ul className="list-disc pl-6">
-              {applications.map((app, i) => (
-                <li key={i}>{app.license_type}: {app.status}</li>
-              ))}
-            </ul>
-          </div>
-        )
-      case 'license':
-        return (
-          <form onSubmit={handleSubmit} className="space-y-4 p-4">
-            <div>
-              <label>License Type</label>
-              <input
-                type="text"
-                className="w-full border rounded p-2"
-                value={form.licenseType}
-                onChange={(e) => setForm({ ...form, licenseType: e.target.value })}
-              />
-            </div>
-            <div>
-              <label>Description</label>
-              <textarea
-                className="w-full border rounded p-2"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
-            <div>
-              <label>Upload File</label>
-              <input
-                type="file"
-                onChange={(e) => setForm({ ...form, document: e.target.files?.[0] || null })}
-              />
-            </div>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
-            {message && <p className="text-green-600">{message}</p>}
-          </form>
-        )
-      case 'settings':
-        return (
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-2">Settings</h2>
-            <p>Coming soon: Edit profile, upload picture, dark mode toggle, logout.</p>
-          </div>
-        )
-    }
+  const logout = () => {
+    signOut(auth)
+    localStorage.removeItem('authToken')
+    router.push('/login')
   }
+
+  useEffect(() => {
+    fetchApplications()
+  }, [])
 
   return (
-    <div className="flex h-screen">
-      <aside className="w-64 bg-gray-100 p-4 border-r">
-        <div className="text-lg font-bold mb-6">LicenseEase</div>
-        <nav className="space-y-2">
-          <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-2 ${activeTab === 'profile' ? 'text-blue-600 font-semibold' : ''}`}>
-            <User2 size={18} /> Profile
-          </button>
-          <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 ${activeTab === 'dashboard' ? 'text-blue-600 font-semibold' : ''}`}>
-            <GaugeCircle size={18} /> Dashboard
-          </button>
-          <button onClick={() => setActiveTab('license')} className={`flex items-center gap-2 ${activeTab === 'license' ? 'text-blue-600 font-semibold' : ''}`}>
-            <FileText size={18} /> Licenses
-          </button>
-          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 ${activeTab === 'settings' ? 'text-blue-600 font-semibold' : ''}`}>
-            <Settings size={18} /> Settings
-          </button>
-        </nav>
+    <div className={`${dark ? 'dark bg-gray-900 text-white' : 'bg-gray-50 text-black'} flex h-screen`}>
+      <aside className='w-64 p-4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'>
+        <h2 className='text-2xl font-bold mb-6 flex items-center gap-2'><User className='w-6 h-6' /> LicenseEase</h2>
+        <div className='flex flex-col gap-2 text-sm'>
+          {[{ key: 'profile', icon: <User className='w-5 h-5' />, label: 'Profile' },
+            { key: 'dashboard', icon: <LayoutDashboard className='w-5 h-5' />, label: 'Dashboard' },
+            { key: 'licenses', icon: <FileText className='w-5 h-5' />, label: 'Licenses' },
+            { key: 'settings', icon: <Settings className='w-5 h-5' />, label: 'Settings' }].map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setTab(item.key)}
+              className={`flex items-center gap-3 px-3 py-2 rounded hover:bg-white hover:text-black hover:shadow-md transition ${tab === item.key ? 'bg-white text-black shadow-md' : 'text-gray-500'}`}
+            >
+              {item.icon} <span className='font-medium'>{item.label}</span>
+            </button>
+          ))}
+        </div>
+        <div className='mt-8 flex gap-3'>
+          <button onClick={toggleTheme}><Moon /></button>
+          <button onClick={logout}><LogOut /></button>
+        </div>
       </aside>
-      <main className="flex-1 overflow-y-auto bg-white">{renderContent()}</main>
+
+      <main className='flex-grow p-6 overflow-y-auto'>
+        {tab === 'profile' && (
+          <div>
+            <h2 className='text-2xl font-bold mb-4'>Profile</h2>
+            <div className='flex items-center gap-6'>
+              <div className='w-32 h-32 rounded-full bg-gray-300 dark:bg-gray-600'></div>
+              <div>
+                <p><strong>Name:</strong> John Doe</p>
+                <p><strong>Email:</strong> johndoe@example.com</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'dashboard' && (
+          <div>
+            <h2 className='text-2xl font-bold mb-4'>Dashboard Overview</h2>
+            <p>You’ve submitted <strong>{applications.length}</strong> applications.</p>
+          </div>
+        )}
+
+        {tab === 'licenses' && (
+          <div>
+            <h2 className='text-2xl font-bold mb-4'>Submit a License Application</h2>
+            {message && <p className='text-blue-600 mb-2'>{message}</p>}
+            <form onSubmit={handleSubmit} className='space-y-4 bg-white dark:bg-gray-900 p-4 rounded shadow'>
+              <div>
+                <label className='block'>License Type</label>
+                <input
+                  type='text'
+                  value={form.licenseType}
+                  onChange={(e) => setForm({ ...form, licenseType: e.target.value })}
+                  className='w-full p-2 border rounded text-black'
+                />
+              </div>
+              <div>
+                <label className='block'>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  className='w-full p-2 border rounded text-black'
+                />
+              </div>
+              <div>
+                <label className='block'>Document</label>
+                <input
+                  type='file'
+                  accept='.pdf,.jpg,.png'
+                  onChange={(e) => setForm({ ...form, document: e.target.files?.[0] || null })}
+                  className='text-black'
+                />
+              </div>
+              <button type='submit' className='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'>Submit</button>
+            </form>
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <div>
+            <h2 className='text-2xl font-bold mb-4'>Settings</h2>
+            <p>Edit profile settings, update preferences, etc.</p>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
