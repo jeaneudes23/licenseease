@@ -1,4 +1,3 @@
-
 #app.py
 
 from flask import Flask, request, jsonify
@@ -6,16 +5,35 @@ from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, auth, storage
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+import os
 import datetime
 
-app = Flask(__name__)
-CORS(app)
+# Load env vars from ../.env.local
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env.local"))
 
-cred = credentials.Certificate("firebase.json")
+# Construct Firebase credentials from env
+firebase_creds = {
+    "type": os.getenv("FIREBASE_TYPE"),
+    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+    "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),
+    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+    "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+    "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+    "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
+    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
+}
+
+cred = credentials.Certificate(firebase_creds)
 firebase_admin.initialize_app(cred, {
-    "storageBucket": "licenseease-b9a1b.appspot.com"
+    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET")
 })
 bucket = storage.bucket()
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Limits
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
@@ -323,7 +341,7 @@ def get_services():
 
     print("Raw items:", raw_items)
 
-    # 2) Group by `category` field (each document must have a 'category' key)
+    # 2) Group by category field (each document must have a 'category' key)
     categories_dict: dict[str, list[dict]] = defaultdict(list)
     for svc in raw_items:
         cat_name = svc.get('category', 'Uncategorized')
