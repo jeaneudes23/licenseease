@@ -1,4 +1,3 @@
-
 #app.py
 
 from flask import Flask, request, jsonify
@@ -342,7 +341,7 @@ def get_services():
 
     print("Raw items:", raw_items)
 
-    # 2) Group by `category` field (each document must have a 'category' key)
+    # 2) Group by category field (each document must have a 'category' key)
     categories_dict: dict[str, list[dict]] = defaultdict(list)
     for svc in raw_items:
         cat_name = svc.get('category', 'Uncategorized')

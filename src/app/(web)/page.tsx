@@ -1,5 +1,8 @@
 import LicensesAccordion from "@/features/licenses/components/LicensesAccordion";
 
+import LicenseCategories from "@/components/homepage/licenceCategories";
+import ApplicationSteps from "@/components/homepage/applicationSteps";
+import SampleRequirements from "@/components/homepage/sample";
 
 export default function Home() {
   return (
@@ -10,6 +13,9 @@ export default function Home() {
       <div className="max-w-screen-md mx-auto py-8">
         <LicensesAccordion />
       </div>
+        <LicenseCategories />
+        <ApplicationSteps />
+        <SampleRequirements />
     </main>
   );
 }
