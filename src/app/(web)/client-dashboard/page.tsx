@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { LogOut, Moon, Settings, User, FileText, LayoutDashboard } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getAuth, signOut } from 'firebase/auth'
 import app from '@/firebase'
+import ClientDashboardLayout from '@/features/client/components/ClientDashboardLayout'
+import ProfileTab from '@/features/client/components/ProfileTab'
+import SettingsTab from '@/features/client/components/SettingsTab'
 
 export default function ClientDashboard() {
   const router = useRouter()
@@ -18,9 +20,22 @@ export default function ClientDashboard() {
   })
   const [applications, setApplications] = useState([])
   const [message, setMessage] = useState('')
-  const [dark, setDark] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+  const [language, setLanguage] = useState('en')
+  const [userProfile, setUserProfile] = useState({
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    phone: '',
+    address: '',
+    profilePicture: ''
+  })
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: false,
+    push: true
+  })
 
-  const toggleTheme = () => setDark(!dark)
+  const toggleTheme = () => setDarkMode(!darkMode)
 
   const fetchApplications = async () => {
     const token = localStorage.getItem('authToken')
@@ -69,98 +84,118 @@ export default function ClientDashboard() {
     router.push('/login')
   }
 
+  const handleUpdateProfile = (newProfile: any) => {
+    setUserProfile(newProfile)
+  }
+
+  const handleNotificationChange = (type: string, enabled: boolean) => {
+    setNotifications(prev => ({
+      ...prev,
+      [type]: enabled
+    }))
+  }
+
   useEffect(() => {
     fetchApplications()
   }, [])
 
   return (
-    <div className={`${dark ? 'dark bg-gray-900 text-white' : 'bg-gray-50 text-black'} flex h-screen`}>
-      <aside className='w-64 p-4 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'>
-        <h2 className='text-2xl font-bold mb-6 flex items-center gap-2'><User className='w-6 h-6' /> LicenseEase</h2>
-        <div className='flex flex-col gap-2 text-sm'>
-          {[{ key: 'profile', icon: <User className='w-5 h-5' />, label: 'Profile' },
-            { key: 'dashboard', icon: <LayoutDashboard className='w-5 h-5' />, label: 'Dashboard' },
-            { key: 'licenses', icon: <FileText className='w-5 h-5' />, label: 'Licenses' },
-            { key: 'settings', icon: <Settings className='w-5 h-5' />, label: 'Settings' }].map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setTab(item.key)}
-              className={`flex items-center gap-3 px-3 py-2 rounded hover:bg-white hover:text-black hover:shadow-md transition ${tab === item.key ? 'bg-white text-black shadow-md' : 'text-gray-500'}`}
-            >
-              {item.icon} <span className='font-medium'>{item.label}</span>
-            </button>
-          ))}
-        </div>
-        <div className='mt-8 flex gap-3'>
-          <button onClick={toggleTheme}><Moon /></button>
-          <button onClick={logout}><LogOut /></button>
-        </div>
-      </aside>
+    <ClientDashboardLayout
+      activeTab={tab}
+      onTabChange={setTab}
+      onLogout={logout}
+      darkMode={darkMode}
+      onToggleDarkMode={toggleTheme}
+      userProfile={userProfile}
+    >
+      {tab === 'profile' && (
+        <ProfileTab
+          userProfile={userProfile}
+          onUpdateProfile={handleUpdateProfile}
+        />
+      )}
 
-      <main className='flex-grow p-6 overflow-y-auto'>
-        {tab === 'profile' && (
-          <div>
-            <h2 className='text-2xl font-bold mb-4'>Profile</h2>
-            <div className='flex items-center gap-6'>
-              <div className='w-32 h-32 rounded-full bg-gray-300 dark:bg-gray-600'></div>
-              <div>
-                <p><strong>Name:</strong> John Doe</p>
-                <p><strong>Email:</strong> johndoe@example.com</p>
-              </div>
+      {tab === 'dashboard' && (
+        <div className='px-6 py-4'>
+          <h2 className='text-2xl font-bold mb-6'>Dashboard Overview</h2>
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+            <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
+              <h3 className='text-lg font-semibold mb-2'>Total Applications</h3>
+              <p className='text-3xl font-bold text-primary'>{applications.length}</p>
+            </div>
+            <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
+              <h3 className='text-lg font-semibold mb-2'>Pending</h3>
+              <p className='text-3xl font-bold text-yellow-600'>{applications.filter((app: any) => app.status === 'pending').length}</p>
+            </div>
+            <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
+              <h3 className='text-lg font-semibold mb-2'>Approved</h3>
+              <p className='text-3xl font-bold text-green-600'>{applications.filter((app: any) => app.status === 'approved').length}</p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {tab === 'dashboard' && (
-          <div>
-            <h2 className='text-2xl font-bold mb-4'>Dashboard Overview</h2>
-            <p>You’ve submitted <strong>{applications.length}</strong> applications.</p>
-          </div>
-        )}
-
-        {tab === 'licenses' && (
-          <div>
-            <h2 className='text-2xl font-bold mb-4'>Submit a License Application</h2>
-            {message && <p className='text-blue-600 mb-2'>{message}</p>}
-            <form onSubmit={handleSubmit} className='space-y-4 bg-white dark:bg-gray-900 p-4 rounded shadow'>
+      {tab === 'licenses' && (
+        <div className='px-6 py-4'>
+          <h2 className='text-2xl font-bold mb-6'>Submit a License Application</h2>
+          {message && (
+            <div className={`mb-4 p-3 rounded-md ${message.includes('✅') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {message}
+            </div>
+          )}
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
+            <form onSubmit={handleSubmit} className='space-y-4'>
               <div>
-                <label className='block'>License Type</label>
+                <label className='block text-sm font-medium mb-2'>License Type</label>
                 <input
                   type='text'
                   value={form.licenseType}
                   onChange={(e) => setForm({ ...form, licenseType: e.target.value })}
-                  className='w-full p-2 border rounded text-black'
+                  className='w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600'
+                  required
                 />
               </div>
               <div>
-                <label className='block'>Description</label>
+                <label className='block text-sm font-medium mb-2'>Description</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className='w-full p-2 border rounded text-black'
+                  className='w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600'
+                  rows={4}
+                  required
                 />
               </div>
               <div>
-                <label className='block'>Document</label>
+                <label className='block text-sm font-medium mb-2'>Document</label>
                 <input
                   type='file'
                   accept='.pdf,.jpg,.png'
                   onChange={(e) => setForm({ ...form, document: e.target.files?.[0] || null })}
-                  className='text-black'
+                  className='w-full p-3 border rounded-md dark:bg-gray-700 dark:border-gray-600'
+                  required
                 />
               </div>
-              <button type='submit' className='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'>Submit</button>
+              <button 
+                type='submit' 
+                className='bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors'
+              >
+                Submit Application
+              </button>
             </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {tab === 'settings' && (
-          <div>
-            <h2 className='text-2xl font-bold mb-4'>Settings</h2>
-            <p>Edit profile settings, update preferences, etc.</p>
-          </div>
-        )}
-      </main>
-    </div>
+      {tab === 'settings' && (
+        <SettingsTab
+          darkMode={darkMode}
+          onToggleDarkMode={toggleTheme}
+          language={language}
+          onLanguageChange={setLanguage}
+          notifications={notifications}
+          onNotificationChange={handleNotificationChange}
+        />
+      )}
+    </ClientDashboardLayout>
   )
 }

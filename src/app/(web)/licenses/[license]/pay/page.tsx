@@ -13,7 +13,7 @@ interface Props {
 
 const validTypes = ['first-time-application-fee', 'first-time-license-fee']
 
-export default function page({ params, searchParams }: Props) {
+export default function PayPage({ params, searchParams }: Props) {
   if (!validTypes.includes(searchParams.type)) return (
     <div className='container py-12 text-center'>
       <h1 className='text-2xl text-destructive font-semibold'>Error parsing payment type</h1>
@@ -31,14 +31,35 @@ export default function page({ params, searchParams }: Props) {
       <div className='max-w-md mx-auto '>
         <div className='grid gap-2'>
           <h3 className='font-medium'>Pay with mobile money</h3>
-          <form action="" className='flex items-center gap-4 text-sm'>
-            <input type="text" placeholder='Phone Number' className='primary w-full max-w-md' />
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            const formData = new FormData(e.currentTarget)
+            const phoneNumber = formData.get('phone') as string
+            console.log('Processing mobile money payment for:', phoneNumber)
+            alert(`Processing payment for ${phoneNumber}`)
+          }} className='flex items-center gap-4 text-sm'>
+            <input 
+              type="tel" 
+              name="phone"
+              placeholder='Phone Number' 
+              className='primary w-full max-w-md' 
+              required
+              pattern="[0-9]{10,13}"
+            />
             <SubmitButton className='flex-grow'>Pay</SubmitButton>
           </form>
         </div>
         <div className='flex items-center gap-2 py-6 font-medium text-sm'><span className='flex-grow border-t-2'></span>Or<span className='flex-grow border-t-2'></span></div>
         <div className='grid'>
-          <SubmitButton variant={'accent'}>Pay with Card</SubmitButton>
+          <SubmitButton 
+            variant={'accent'}
+            onClick={() => {
+              console.log('Processing card payment')
+              alert('Redirecting to card payment processor...')
+            }}
+          >
+            Pay with Card
+          </SubmitButton>
         </div>
       </div>
     </div>

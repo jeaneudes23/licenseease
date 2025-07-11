@@ -28,7 +28,7 @@ type Category = {
   licenses: License[]
 }
 
-export default function page({ params }: Props) {
+export default function ApplyPage({ params }: Props) {
   const [license, setLicense] = useState<License | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
@@ -94,11 +94,26 @@ export default function page({ params }: Props) {
                   <p className="line-clamp-1 font-medium">{req}</p>
                   <div className="flex items-center gap-2">
                     {index % 3 === 0 ? (
-                      <UploadFileDialog />
+                      <UploadFileDialog 
+                        documentName={req}
+                        onUpload={(file) => console.log('Upload file:', file.name, 'for', req)}
+                      />
                     ) : (
                       <>
-                        <RemoveFileDialog />
-                        <Button className="h-0 p-0 size-8 rounded-full">
+                        <RemoveFileDialog 
+                          fileName={req}
+                          onRemove={() => console.log('Remove file:', req)}
+                        />
+                        <Button 
+                          className="h-0 p-0 size-8 rounded-full"
+                          onClick={() => {
+                            // Create a dummy download for demonstration
+                            const link = document.createElement('a')
+                            link.href = `#download-${req.replace(/\s+/g, '-').toLowerCase()}`
+                            link.download = `${req}.pdf`
+                            link.click()
+                          }}
+                        >
                           <Download className="size-4" />
                         </Button>
                       </>
