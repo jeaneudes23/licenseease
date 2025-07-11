@@ -10,11 +10,13 @@ interface Props {
 export default function TagsInput({ name }: Props) {
   const [tags, setTags] = useState<string[]>([])
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement> & ChangeEvent<HTMLFormElement>) => {
-    const value = (e.target.value as string).trim().replaceAll(',','-')
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const target = e.target as HTMLInputElement
+    const value = target.value.trim().replaceAll(',','-')
     if (e.key === 'Enter' && value.length > 2 && !tags.includes(value)) {
+      e.preventDefault()
       setTags(prevTags => [...prevTags,value])
-      e.target.value = ''
+      target.value = ''
     }
   }
 

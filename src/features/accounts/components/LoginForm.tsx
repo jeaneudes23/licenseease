@@ -26,7 +26,7 @@ export default function LoginForm() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const token = await userCredential.user.getIdToken()
+      const token = await userCredential.user.getIdToken(true) // Force refresh
 
       // Send token to backend to retrieve role and user info
       const res = await fetch('http://localhost:5000/signin', {
@@ -41,7 +41,7 @@ export default function LoginForm() {
         throw new Error(data.error || 'Login failed.')
       }
 
-      localStorage.setItem('authToken', data.token)
+      localStorage.setItem('authToken', token) // Store Firebase token, not backend token
       localStorage.setItem('user', JSON.stringify(data.user))
 
       // Redirect based on user role

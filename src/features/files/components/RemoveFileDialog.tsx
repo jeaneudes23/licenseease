@@ -10,27 +10,46 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { X } from "lucide-react"
+import { useState } from "react"
 
+interface RemoveFileDialogProps {
+  fileName?: string
+  onRemove?: () => void
+}
 
-export default function RemoveFileDialog() {
+export default function RemoveFileDialog({ fileName = 'file', onRemove }: RemoveFileDialogProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleRemove = () => {
+    if (onRemove) {
+      onRemove()
+    }
+    setIsOpen(false)
+  }
+
   return (
-    <Dialog>
-      <DialogTrigger>
-        <span className='bg-destructive text-destructive-foreground size-8 grid place-content-center rounded-full'><X className='size-4' /></span>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <button className='bg-destructive text-destructive-foreground size-8 grid place-content-center rounded-full hover:bg-destructive/90 transition-colors'>
+          <X className='size-4' />
+        </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you sure you want to remove this file?</DialogTitle>
+          <DialogTitle>Remove {fileName}?</DialogTitle>
           <DialogDescription>
-            This action cannot be undone.
+            Are you sure you want to remove this file? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-        <DialogClose className={buttonVariants({variant: 'secondary'})}>Cancel</DialogClose>
-        <Button variant={'destructive'}>Remove</Button>
-      </DialogFooter>
+          <Button variant="secondary" onClick={() => setIsOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleRemove}>
+            Remove
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-
   )
 }

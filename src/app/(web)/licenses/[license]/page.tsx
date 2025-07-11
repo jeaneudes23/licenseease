@@ -28,7 +28,7 @@ interface Props {
   }
 }
 
-export default function page({ params }: Props) {
+export default function LicensePage({ params }: Props) {
   const [license, setLicense] = useState<License | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
