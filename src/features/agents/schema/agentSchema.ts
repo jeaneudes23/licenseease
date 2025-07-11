@@ -11,27 +11,25 @@ export interface Representative {
 
 export interface Agent {
   id: string
-  name: string
-  email: string
-  phone: string
-  address: string
-  companyName?: string
-  companyType?: string
-  registrationNumber?: string
+  companyName: string
+  companyType: string
+  registrationNumber: string
+  companyEmail: string
+  companyPhone: string
+  companyAddress: string
   status: 'active' | 'pending' | 'suspended'
-  representatives?: Representative[]
+  representatives: Representative[]
 }
 
 export const agents: Agent[] = [
   {
     id: '1',
-    name: 'James Dean',
-    email: 'james@agent.com',
-    phone: '+250876837289',
-    address: 'Kigali - Rwanda',
     companyName: 'Microsoft Corporation',
     companyType: 'technology',
     registrationNumber: 'RC-2024-001',
+    companyEmail: 'info@microsoft.rw',
+    companyPhone: '+250876837289',
+    companyAddress: 'Kigali - Rwanda',
     status: 'active',
     representatives: [
       {
@@ -57,13 +55,12 @@ export const agents: Agent[] = [
   },
   {
     id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah@techcorp.com',
-    phone: '+250785432109',
-    address: 'Kigali - Rwanda',
     companyName: 'TechCorp Solutions',
     companyType: 'software',
     registrationNumber: 'RC-2024-002',
+    companyEmail: 'info@techcorp.com',
+    companyPhone: '+250785432109',
+    companyAddress: 'Kigali - Rwanda',
     status: 'pending',
     representatives: []
   }

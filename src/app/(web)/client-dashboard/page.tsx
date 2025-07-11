@@ -1,15 +1,17 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getAuth, signOut } from 'firebase/auth'
 import app from '@/firebase'
 import ClientDashboardLayout from '@/features/client/components/ClientDashboardLayout'
 import ProfileTab from '@/features/client/components/ProfileTab'
 import SettingsTab from '@/features/client/components/SettingsTab'
+import { apiRequest, APIError } from '@/lib/api'
 
 export default function ClientDashboard() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const auth = getAuth(app)
 
   const [tab, setTab] = useState('profile')
@@ -18,8 +20,9 @@ export default function ClientDashboard() {
     description: '',
     document: null as File | null,
   })
-  const [applications, setApplications] = useState([])
+  const [applications, setApplications] = useState<any[]>([])
   const [message, setMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
   const [language, setLanguage] = useState('en')
   const [userProfile, setUserProfile] = useState({
@@ -38,43 +41,63 @@ export default function ClientDashboard() {
   const toggleTheme = () => setDarkMode(!darkMode)
 
   const fetchApplications = async () => {
-    const token = localStorage.getItem('authToken')
     try {
-      const res = await fetch('http://127.0.0.1:5000/applications', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (res.ok) setApplications(data)
+      const data = await apiRequest('http://127.0.0.1:5000/applications')
+      setApplications(data)
     } catch (err) {
       console.error('Error fetching applications:', err)
+      if (err instanceof APIError && err.status === 401) {
+        // Token expired and couldn't refresh, redirect to login
+        router.push('/login')
+      }
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const token = localStorage.getItem('authToken')
     if (!form.licenseType || !form.description || !form.document) return setMessage('All fields required.')
+    
+    setIsSubmitting(true)
+    setMessage('')
+    
     const formData = new FormData()
     formData.append('license_type', form.licenseType)
     formData.append('description', form.description)
     formData.append('file', form.document)
 
     try {
-      const res = await fetch('http://127.0.0.1:5000/applications', {
+      const data = await apiRequest('http://127.0.0.1:5000/applications', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
-      const data = await res.json()
-      if (res.ok) {
-        setMessage('✅ Submitted!')
-        setForm({ licenseType: '', description: '', document: null })
-        fetchApplications()
-      } else {
-        setMessage(data.error || 'Something went wrong.')
+      
+      // Add the new application with pending status immediately
+      const newApplication = {
+        id: data.id || Date.now(),
+        license_type: form.licenseType,
+        description: form.description,
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+        ...data
       }
+      setApplications(prev => [...prev, newApplication])
+      
+      setMessage('✅ Application submitted successfully!')
+      setForm({ licenseType: '', description: '', document: null })
+      
+      // Redirect to payment page after 1 second
+      setTimeout(() => {
+        router.push(`/licenses/${form.licenseType.toLowerCase().replace(/\s+/g, '-')}/pay?type=first-time-application-fee`)
+      }, 1000)
     } catch (err) {
-      setMessage('Failed to submit application.')
+      if (err instanceof APIError && err.status === 401) {
+        setMessage('Your session has expired. Please log in again.')
+        router.push('/login')
+      } else {
+        setMessage(err instanceof APIError ? err.message : 'Failed to submit application.')
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -97,7 +120,18 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchApplications()
-  }, [])
+    
+    // Check for payment success
+    const paymentStatus = searchParams.get('payment')
+    const tabParam = searchParams.get('tab')
+    
+    if (paymentStatus === 'success') {
+      setMessage('✅ Payment completed successfully! Your application is now being processed.')
+      setTab(tabParam || 'dashboard')
+      // Clear URL parameters
+      window.history.replaceState({}, '', '/client-dashboard')
+    }
+  }, [searchParams])
 
   return (
     <ClientDashboardLayout
@@ -177,9 +211,17 @@ export default function ClientDashboard() {
               </div>
               <button 
                 type='submit' 
-                className='bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors'
+                disabled={isSubmitting}
+                className='bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
               >
-                Submit Application
+                {isSubmitting ? (
+                  <>
+                    <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white'></div>
+                    Processing...
+                  </>
+                ) : (
+                  'Submit Application'
+                )}
               </button>
             </form>
           </div>

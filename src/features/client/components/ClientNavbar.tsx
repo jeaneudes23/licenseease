@@ -34,14 +34,14 @@ export default function ClientNavbar({ darkMode, onToggleDarkMode, onLogout, use
                 <User className='size-6'/>
               )}
             </button>
-            <div className='absolute bg-white py-2 rounded-md shadow-lg right-0 top-12 whitespace-pre text-sm w-44 opacity-0 transition-all group-focus-within:opacity-100 pointer-events-none group-focus-within:pointer-events-auto'>
+            <div className='absolute bg-white dark:bg-gray-800 py-2 rounded-md shadow-lg right-0 top-12 whitespace-pre text-sm w-44 opacity-0 transition-all group-focus-within:opacity-100 pointer-events-none group-focus-within:pointer-events-auto border dark:border-gray-700'>
               <div className='flex items-center gap-2 justify-between font-medium px-4 py-2'>
-                <span className='text-muted-foreground'>{userProfile.name}</span>
+                <span className='text-muted-foreground dark:text-gray-300'>{userProfile.name}</span>
                 <Settings className='size-4'/>
               </div>
               <button 
                 onClick={onLogout}
-                className='flex items-center gap-2 justify-between font-medium hover:bg-muted transition-all px-4 py-2 w-full text-left'
+                className='flex items-center gap-2 justify-between font-medium hover:bg-muted dark:hover:bg-gray-700 transition-all px-4 py-2 w-full text-left'
               >
                 Logout <LogOut className='size-4'/>
               </button>

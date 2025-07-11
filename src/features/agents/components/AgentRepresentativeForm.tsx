@@ -74,7 +74,7 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
           Local Representatives in Rwanda
         </h3>
         <p className='text-sm text-muted-foreground mb-4'>
-          Add local representatives who can act on behalf of the agent in Rwanda.
+          Add local representatives who can act on behalf of the company in Rwanda.
         </p>
 
         {/* Existing Representatives */}

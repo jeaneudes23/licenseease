@@ -8,8 +8,8 @@ export default function AgentsDataTable() {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Agent Details</TableHead>
           <TableHead>Company</TableHead>
+          <TableHead>Registration</TableHead>
           <TableHead>Contact</TableHead>
           <TableHead>Local Representatives</TableHead>
           <TableHead>Status</TableHead>
@@ -20,31 +20,28 @@ export default function AgentsDataTable() {
           <TableRow key={index}>
             <TableCell>
               <div className='flex items-center gap-2'>
-                <User className='size-4 text-muted-foreground' />
-                <div>
-                  <div className='font-medium'>{agent.name}</div>
-                  <div className='text-sm text-muted-foreground'>{agent.email}</div>
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className='flex items-center gap-2'>
                 <Building className='size-4 text-muted-foreground' />
                 <div>
-                  <div className='font-medium'>{agent.companyName || 'N/A'}</div>
-                  <div className='text-sm text-muted-foreground'>{agent.companyType || 'Not specified'}</div>
+                  <div className='font-medium'>{agent.companyName}</div>
+                  <div className='text-sm text-muted-foreground'>{agent.companyType}</div>
                 </div>
               </div>
             </TableCell>
             <TableCell>
               <div>
-                <div className='font-medium'>{agent.phone}</div>
-                <div className='text-sm text-muted-foreground'>{agent.address}</div>
+                <div className='font-medium'>{agent.registrationNumber}</div>
+                <div className='text-sm text-muted-foreground'>{agent.companyEmail}</div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div>
+                <div className='font-medium'>{agent.companyPhone}</div>
+                <div className='text-sm text-muted-foreground'>{agent.companyAddress}</div>
               </div>
             </TableCell>
             <TableCell>
               <div className='flex flex-wrap gap-1'>
-                {agent.representatives && agent.representatives.length > 0 ? (
+                {agent.representatives.length > 0 ? (
                   agent.representatives.map((rep, repIndex) => (
                     <Badge key={repIndex} variant="outline" className='text-xs'>
                       {rep.fullName}

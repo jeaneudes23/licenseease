@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Eye, EyeOff, Save, Bell, Globe, Moon, Sun } from 'lucide-react'
+import { Bell, Globe, Moon, Sun, Key, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { getTranslation, Language } from '@/lib/translations'
 
 interface SettingsTabProps {
   darkMode: boolean
@@ -24,153 +26,55 @@ export default function SettingsTab({
   notifications,
   onNotificationChange
 }: SettingsTabProps) {
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  })
-  const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false
-  })
-  const [passwordMessage, setPasswordMessage] = useState('')
+  const router = useRouter()
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordMessage('New passwords do not match')
-      return
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setPasswordMessage('New password must be at least 6 characters')
-      return
-    }
-
-    try {
-      // Here you would typically call your backend API
-      // For now, we'll just show a success message
-      setPasswordMessage('Password updated successfully')
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
-    } catch (error) {
-      setPasswordMessage('Failed to update password')
-    }
+  const handleChangePassword = () => {
+    router.push('/change-password')
   }
 
-  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }))
-  }
+  const t = (key: string) => getTranslation(language as Language, key as any)
 
   return (
     <div className='px-6 py-4'>
-      <h2 className='text-2xl font-bold mb-6'>Settings</h2>
+      <h2 className='text-2xl font-bold mb-6'>{t('settings')}</h2>
       
       <div className='space-y-8'>
         {/* Change Password Section */}
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
           <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
-            <Eye className='size-5' />
-            Change Password
+            <Key className='size-5' />
+            {t('security')}
           </h3>
           
-          <form onSubmit={handlePasswordChange} className='space-y-4'>
+          <div className='space-y-4'>
             <div>
-              <label className='block text-sm font-medium mb-1'>Current Password</label>
-              <div className='relative'>
-                <input
-                  type={showPasswords.current ? 'text' : 'password'}
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                  className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 pr-10'
-                  required
-                />
-                <button
-                  type='button'
-                  onClick={() => togglePasswordVisibility('current')}
-                  className='absolute right-2 top-2 text-gray-500 hover:text-gray-700'
-                >
-                  {showPasswords.current ? <EyeOff className='size-5' /> : <Eye className='size-5' />}
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <label className='block text-sm font-medium mb-1'>New Password</label>
-              <div className='relative'>
-                <input
-                  type={showPasswords.new ? 'text' : 'password'}
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                  className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 pr-10'
-                  required
-                />
-                <button
-                  type='button'
-                  onClick={() => togglePasswordVisibility('new')}
-                  className='absolute right-2 top-2 text-gray-500 hover:text-gray-700'
-                >
-                  {showPasswords.new ? <EyeOff className='size-5' /> : <Eye className='size-5' />}
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <label className='block text-sm font-medium mb-1'>Confirm New Password</label>
-              <div className='relative'>
-                <input
-                  type={showPasswords.confirm ? 'text' : 'password'}
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                  className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 pr-10'
-                  required
-                />
-                <button
-                  type='button'
-                  onClick={() => togglePasswordVisibility('confirm')}
-                  className='absolute right-2 top-2 text-gray-500 hover:text-gray-700'
-                >
-                  {showPasswords.confirm ? <EyeOff className='size-5' /> : <Eye className='size-5' />}
-                </button>
-              </div>
-            </div>
-            
-            {passwordMessage && (
-              <p className={`text-sm ${passwordMessage.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
-                {passwordMessage}
+              <p className='text-sm text-muted-foreground mb-4'>
+                {t('securityDescription')}
               </p>
-            )}
-            
-            <button
-              type='submit'
-              className='bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2'
-            >
-              <Save className='size-4' />
-              Update Password
-            </button>
-          </form>
+              <button
+                onClick={handleChangePassword}
+                className='bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2'
+              >
+                <Key className='size-4' />
+                {t('changePassword')}
+                <ExternalLink className='size-4' />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Notification Preferences */}
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
           <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
             <Bell className='size-5' />
-            Notification Preferences
+            {t('notificationPreferences')}
           </h3>
           
           <div className='space-y-4'>
             <div className='flex items-center justify-between'>
               <div>
-                <label className='font-medium'>Email Notifications</label>
-                <p className='text-sm text-muted-foreground'>Receive updates via email</p>
+                <label className='font-medium'>{t('emailNotifications')}</label>
+                <p className='text-sm text-muted-foreground'>{t('emailNotificationsDesc')}</p>
               </div>
               <label className='relative inline-flex items-center cursor-pointer'>
                 <input
@@ -185,8 +89,8 @@ export default function SettingsTab({
             
             <div className='flex items-center justify-between'>
               <div>
-                <label className='font-medium'>SMS Notifications</label>
-                <p className='text-sm text-muted-foreground'>Receive updates via SMS</p>
+                <label className='font-medium'>{t('smsNotifications')}</label>
+                <p className='text-sm text-muted-foreground'>{t('smsNotificationsDesc')}</p>
               </div>
               <label className='relative inline-flex items-center cursor-pointer'>
                 <input
@@ -201,8 +105,8 @@ export default function SettingsTab({
             
             <div className='flex items-center justify-between'>
               <div>
-                <label className='font-medium'>Push Notifications</label>
-                <p className='text-sm text-muted-foreground'>Receive browser notifications</p>
+                <label className='font-medium'>{t('pushNotifications')}</label>
+                <p className='text-sm text-muted-foreground'>{t('pushNotificationsDesc')}</p>
               </div>
               <label className='relative inline-flex items-center cursor-pointer'>
                 <input
@@ -221,20 +125,20 @@ export default function SettingsTab({
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
           <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
             <Globe className='size-5' />
-            Language Settings
+            {t('languageSettings')}
           </h3>
           
           <div className='space-y-4'>
             <div>
-              <label className='block text-sm font-medium mb-2'>Preferred Language</label>
+              <label className='block text-sm font-medium mb-2'>{t('preferredLanguage')}</label>
               <select
                 value={language}
                 onChange={(e) => onLanguageChange(e.target.value)}
                 className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
               >
-                <option value='en'>English</option>
-                <option value='rw'>Kinyarwanda</option>
-                <option value='fr'>French</option>
+                <option value='en'>{t('english')}</option>
+                <option value='rw'>{t('kinyarwanda')}</option>
+                <option value='fr'>{t('french')}</option>
               </select>
             </div>
           </div>
@@ -244,13 +148,13 @@ export default function SettingsTab({
         <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
           <h3 className='text-lg font-semibold mb-4 flex items-center gap-2'>
             {darkMode ? <Moon className='size-5' /> : <Sun className='size-5' />}
-            Theme Settings
+            {t('themeSettings')}
           </h3>
           
           <div className='flex items-center justify-between'>
             <div>
-              <label className='font-medium'>Dark Mode</label>
-              <p className='text-sm text-muted-foreground'>Switch between light and dark themes</p>
+              <label className='font-medium'>{t('darkMode')}</label>
+              <p className='text-sm text-muted-foreground'>{t('darkModeDesc')}</p>
             </div>
             <button
               onClick={onToggleDarkMode}

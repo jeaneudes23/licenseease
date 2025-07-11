@@ -18,14 +18,13 @@ interface Representative {
 export default function AgentCreateForm() {
   const [representatives, setRepresentatives] = useState<Representative[]>([])
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    password: '',
     companyName: '',
     companyType: '',
-    registrationNumber: ''
+    registrationNumber: '',
+    companyEmail: '',
+    companyPhone: '',
+    companyAddress: '',
+    password: ''
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -38,80 +37,13 @@ export default function AgentCreateForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would handle the form submission with both agent data and representatives
-    console.log('Agent Data:', formData)
+    // Here you would handle the form submission with both company data and representatives
+    console.log('Company Data:', formData)
     console.log('Representatives:', representatives)
   }
 
   return (
     <form onSubmit={handleSubmit} className='grid gap-6'>
-      {/* Agent Basic Information */}
-      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
-        <h3 className='text-lg font-semibold mb-4'>Agent Information</h3>
-        <div className='grid md:grid-cols-2 gap-4'>
-          <div className='grid gap-1'>
-            <label htmlFor="name" className="text-sm font-medium">Contact Person Name</label>
-            <input 
-              type="text" 
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
-              required
-            />
-          </div>
-          <div className='grid gap-1'>
-            <label htmlFor="email" className="text-sm font-medium">Email</label>
-            <input 
-              type="email" 
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
-              required
-            />
-          </div>
-          <div className='grid gap-1'>
-            <label htmlFor="phone" className="text-sm font-medium">Phone</label>
-            <input 
-              type="text" 
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
-              required
-            />
-          </div>
-          <div className='grid gap-1'>
-            <label htmlFor="address" className="text-sm font-medium">Address</label>
-            <input 
-              type="text" 
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
-              required
-            />
-          </div>
-          <div className='grid gap-1'>
-            <label htmlFor="password" className="text-sm font-medium">Password</label>
-            <input 
-              type="password" 
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
-              required
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Company Information */}
       <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
         <h3 className='text-lg font-semibold mb-4'>Company Information</h3>
@@ -156,10 +88,62 @@ export default function AgentCreateForm() {
               onChange={handleInputChange}
               className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
               placeholder="Company registration number"
+              required
+            />
+          </div>
+          <div className='grid gap-1'>
+            <label htmlFor="companyEmail" className="text-sm font-medium">Company Email</label>
+            <input 
+              type="email" 
+              id="companyEmail"
+              name="companyEmail"
+              value={formData.companyEmail}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+              required
+            />
+          </div>
+          <div className='grid gap-1'>
+            <label htmlFor="companyPhone" className="text-sm font-medium">Company Phone</label>
+            <input 
+              type="text" 
+              id="companyPhone"
+              name="companyPhone"
+              value={formData.companyPhone}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+              required
+            />
+          </div>
+          <div className='grid gap-1'>
+            <label htmlFor="companyAddress" className="text-sm font-medium">Company Address</label>
+            <input 
+              type="text" 
+              id="companyAddress"
+              name="companyAddress"
+              value={formData.companyAddress}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+              required
+            />
+          </div>
+          <div className='grid gap-1'>
+            <label htmlFor="password" className="text-sm font-medium">Login Password</label>
+            <input 
+              type="password" 
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" 
+              placeholder="Password for company account"
+              required
             />
           </div>
         </div>
       </div>
+
+
 
       {/* Local Representatives */}
       <AgentRepresentativeForm
@@ -168,7 +152,7 @@ export default function AgentCreateForm() {
       />
 
       <div>
-        <SubmitButton>Create Agent</SubmitButton>
+        <SubmitButton>Register Company</SubmitButton>
       </div>
     </form>
   )

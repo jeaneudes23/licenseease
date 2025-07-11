@@ -42,15 +42,15 @@ export default function ClientSidebar({ activeTab, onTabChange, onLogout }: Clie
           icon={<Settings className='size-5' />}
           active={activeTab === 'settings'}
         />
-        <div className='mt-8 pt-4 border-t border-muted-foreground'>
+        <div className='mt-8 pt-4 border-t border-muted-foreground dark:border-gray-600'>
           <button
             onClick={onLogout}
-            className='inline-flex items-center gap-2 p-2 transition-all hover:bg-white rounded-xl shadow-sm w-full'
+            className='inline-flex items-center gap-2 p-2 transition-all hover:bg-white dark:hover:bg-gray-700 rounded-xl shadow-sm w-full'
           >
-            <span className='p-1.5 rounded-lg shadow transition-all bg-white text-primary'>
+            <span className='p-1.5 rounded-lg shadow transition-all bg-white dark:bg-gray-800 text-primary'>
               <LogOut className='size-5' />
             </span>
-            <span className='capitalize tracking-wide font-semibold transition-all text-muted-foreground'>
+            <span className='capitalize tracking-wide font-semibold transition-all text-muted-foreground dark:text-gray-300'>
               Logout
             </span>
           </button>
