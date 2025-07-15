@@ -20,10 +20,26 @@ interface UploadFileDialogProps {
 export default function UploadFileDialog({ documentName = 'Document', onUpload }: UploadFileDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [error, setError] = useState<string>('')
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    setError('')
+    
     if (file) {
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File size must be under 5MB')
+        return
+      }
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/png', 'image/jpg', 'image/jpeg']
+      if (!allowedTypes.includes(file.type)) {
+        setError('Only PDF, PNG, and JPG files are allowed')
+        return
+      }
+      
       setSelectedFile(file)
     }
   }
@@ -38,6 +54,7 @@ export default function UploadFileDialog({ documentName = 'Document', onUpload }
 
   const handleCancel = () => {
     setSelectedFile(null)
+    setError('')
     setIsOpen(false)
   }
 
@@ -58,10 +75,16 @@ export default function UploadFileDialog({ documentName = 'Document', onUpload }
               <label htmlFor="file" className="primary py-4 border-2 rounded-md border-dashed grid place-content-center gap-2 cursor-pointer hover:bg-accent/5 transition-colors">
                 <span className="size-10 bg-primary/10 justify-self-center grid place-content-center rounded-full text-primary"><File className="size-5"/></span>
                 <p className="text-primary">Click To Upload</p>
-                <p>Max file size: 25MB</p>
+                <p>Max file size: 5MB</p>
+                <p className="text-xs text-gray-500">Supported: PDF, PNG, JPG</p>
                 {selectedFile && (
                   <p className="text-sm font-medium text-green-600">
-                    Selected: {selectedFile.name}
+                    ✓ Selected: {selectedFile.name}
+                  </p>
+                )}
+                {error && (
+                  <p className="text-sm font-medium text-red-600">
+                    ❌ {error}
                   </p>
                 )}
               </label>
@@ -71,7 +94,7 @@ export default function UploadFileDialog({ documentName = 'Document', onUpload }
                 name="file" 
                 className="hidden" 
                 onChange={handleFileSelect}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                accept=".pdf,.jpg,.jpeg,.png"
               />
             </div>
           </div>
@@ -83,7 +106,7 @@ export default function UploadFileDialog({ documentName = 'Document', onUpload }
           <Button 
             variant="accent" 
             onClick={handleSave}
-            disabled={!selectedFile}
+            disabled={!selectedFile || !!error}
           >
             Save Changes
           </Button>

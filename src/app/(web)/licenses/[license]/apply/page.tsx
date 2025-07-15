@@ -28,9 +28,17 @@ type Category = {
   licenses: License[]
 }
 
+type UploadedFile = {
+  name: string
+  file: File
+  url?: string
+}
+
 export default function ApplyPage({ params }: Props) {
   const [license, setLicense] = useState<License | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({})
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
   useEffect(() => {
     const saved = window.localStorage.getItem('services')
@@ -55,6 +63,49 @@ export default function ApplyPage({ params }: Props) {
     }
   }, [params.license])
 
+  const handleFileUpload = (documentName: string, file: File) => {
+    setUploadedFiles(prev => ({
+      ...prev,
+      [documentName]: {
+        name: file.name,
+        file: file
+      }
+    }))
+  }
+
+  const handleFileRemove = (documentName: string) => {
+    setUploadedFiles(prev => {
+      const newFiles = { ...prev }
+      delete newFiles[documentName]
+      return newFiles
+    })
+  }
+
+  const handleSubmitApplication = async () => {
+    if (!license) return
+    
+    setIsSubmitting(true)
+    try {
+      // For now, just log the submission - you can integrate with your backend later
+      console.log('Submitting application for:', license.name)
+      console.log('Uploaded files:', uploadedFiles)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      alert('Application submitted successfully!')
+    } catch (error) {
+      console.error('Failed to submit application:', error)
+      alert('Failed to submit application. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const allRequiredFilesUploaded = license?.application_requirements.every(
+    req => uploadedFiles[req]
+  ) ?? false
+
   if (loading) {
     return <p className="text-center py-4">Loading…</p>
   }
@@ -78,49 +129,70 @@ export default function ApplyPage({ params }: Props) {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Document Check</CardTitle>
-              <SubmitButton disabled={true}>Submit</SubmitButton>
+              <CardTitle>Document Upload</CardTitle>
+              <SubmitButton 
+                disabled={!allRequiredFilesUploaded || isSubmitting}
+                onClick={handleSubmitApplication}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              </SubmitButton>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid divide-y text-sm">
-              {license.application_requirements.map((req, index) => (
-                <div
-                  key={index}
-                  className={`flex justify-between items-center gap-6 p-2 ${
-                    index % 3 === 0 ? 'bg-destructive/10' : 'bg-accent/10'
-                  }`}
-                >
-                  <p className="line-clamp-1 font-medium">{req}</p>
-                  <div className="flex items-center gap-2">
-                    {index % 3 === 0 ? (
-                      <UploadFileDialog 
-                        documentName={req}
-                        onUpload={(file) => console.log('Upload file:', file.name, 'for', req)}
-                      />
-                    ) : (
-                      <>
-                        <RemoveFileDialog 
-                          fileName={req}
-                          onRemove={() => console.log('Remove file:', req)}
+            <div className="grid gap-2 text-sm">
+              <p className="text-gray-600 mb-4">
+                Please upload all required documents. Each file must be under 5MB and in PDF, PNG, or JPG format.
+              </p>
+              {license.application_requirements.map((req, index) => {
+                const isUploaded = uploadedFiles[req]
+                return (
+                  <div
+                    key={index}
+                    className={`flex justify-between items-center gap-6 p-3 rounded-lg border ${
+                      isUploaded ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{req}</p>
+                      {isUploaded && (
+                        <p className="text-sm text-green-600">
+                          ✓ {isUploaded.name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isUploaded ? (
+                        <UploadFileDialog 
+                          documentName={req}
+                          onUpload={(file) => handleFileUpload(req, file)}
                         />
-                        <Button 
-                          className="h-0 p-0 size-8 rounded-full"
-                          onClick={() => {
-                            // Create a dummy download for demonstration
-                            const link = document.createElement('a')
-                            link.href = `#download-${req.replace(/\s+/g, '-').toLowerCase()}`
-                            link.download = `${req}.pdf`
-                            link.click()
-                          }}
-                        >
-                          <Download className="size-4" />
-                        </Button>
-                      </>
-                    )}
+                      ) : (
+                        <>
+                          <RemoveFileDialog 
+                            fileName={isUploaded.name}
+                            onRemove={() => handleFileRemove(req)}
+                          />
+                          <Button 
+                            className="h-8 w-8 p-0 rounded-full"
+                            variant="outline"
+                            onClick={() => {
+                              // Create download link for the uploaded file
+                              const url = URL.createObjectURL(isUploaded.file)
+                              const link = document.createElement('a')
+                              link.href = url
+                              link.download = isUploaded.name
+                              link.click()
+                              URL.revokeObjectURL(url)
+                            }}
+                          >
+                            <Download className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

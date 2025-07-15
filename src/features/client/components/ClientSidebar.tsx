@@ -19,16 +19,22 @@ export default function ClientSidebar({ activeTab, onTabChange, onLogout }: Clie
       </div>
       <div className='text-sm grid gap-2 overflow-y-auto flex-grow content-start pb-6'>
         <ClientSidebarLink
+          onClick={() => onTabChange('dashboard')}
+          label='dashboard'
+          icon={<LayoutDashboard className='size-5' />}
+          active={activeTab === 'dashboard'}
+        />
+        <ClientSidebarLink
           onClick={() => onTabChange('profile')}
           label='profile'
           icon={<User className='size-5' />}
           active={activeTab === 'profile'}
         />
         <ClientSidebarLink
-          onClick={() => onTabChange('dashboard')}
-          label='dashboard'
-          icon={<LayoutDashboard className='size-5' />}
-          active={activeTab === 'dashboard'}
+          onClick={() => onTabChange('applications')}
+          label='applications'
+          icon={<FileText className='size-5' />}
+          active={activeTab === 'applications'}
         />
         <ClientSidebarLink
           onClick={() => onTabChange('licenses')}

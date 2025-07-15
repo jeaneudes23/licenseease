@@ -1,146 +1,3 @@
-#app.py
-
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, auth, storage
-from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
-import os
-import datetime
-
-# Load env vars from ../.env.local
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env.local"))
-
-# Construct Firebase credentials from env
-firebase_creds = {
-    "type": os.getenv("FIREBASE_TYPE"),
-    "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-    "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-    "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace("\\n", "\n"),
-    "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-    "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-    "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
-    "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
-    "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_X509_CERT_URL"),
-    "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_X509_CERT_URL"),
-}
-
-cred = credentials.Certificate(firebase_creds)
-firebase_admin.initialize_app(cred, {
-    "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET")
-})
-bucket = storage.bucket()
-
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-
-# Limits
-ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
-MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
-app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
-
-applications = []  # Temporary storage
-
-# ──────────────────────────────────────────────
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def require_role(allowed_roles):
-    def decorator(f):
-        def wrapper(*args, **kwargs):
-            auth_header = request.headers.get("Authorization")
-            if not auth_header or not auth_header.startswith("Bearer "):
-                return jsonify({"error": "Unauthorized"}), 401
-            token = auth_header.split(" ")[1]
-            try:
-                decoded_token = auth.verify_id_token(token)
-                role = decoded_token.get("custom_claims", {}).get("role", "client")
-                if role not in allowed_roles:
-                    return jsonify({"error": f"Forbidden for role '{role}'"}), 403
-                request.user = decoded_token
-                return f(*args, **kwargs)
-            except Exception as e:
-                return jsonify({"error": str(e)}), 401
-        wrapper.__name__ = f.__name__
-        return wrapper
-    return decorator
-
-# ──────────────────────────────────────────────
-@app.route("/applications", methods=["POST"])
-@require_role(["client"])
-def submit_application():
-    uid = request.user.get("uid")
-    license_type = request.form.get("license_type")
-    description = request.form.get("description")
-    file = request.files.get("file")
-
-    if not file or file.filename == "":
-        return jsonify({"error": "No file uploaded"}), 400
-
-    if not allowed_file(file.filename):
-        return jsonify({"error": "Invalid file type. Allowed: pdf, png, jpg, jpeg"}), 400
-
-    filename = secure_filename(file.filename)
-    blob = bucket.blob(f"applications/{uid}/{filename}")
-    blob.upload_from_file(file.stream, content_type=file.content_type)
-    blob.make_public()
-
-    app_data = {
-        "id": len(applications) + 1,
-        "uid": uid,
-        "license_type": license_type,
-        "description": description,
-        "file": filename,
-        "file_url": blob.public_url,
-        "status": "pending",
-        "submitted_at": datetime.datetime.now().strftime("%Y-%m-%d")
-    }
-    applications.append(app_data)
-    return jsonify({"message": "Application submitted.", "data": app_data}), 201
-
-# ──────────────────────────────────────────────
-@app.route("/applications", methods=["GET"])
-@require_role(["client"])
-def get_applications():
-    uid = request.user.get("uid")
-    user_apps = [a for a in applications if a["uid"] == uid]
-    return jsonify(user_apps)
-
-@app.route("/set-role", methods=["POST"])
-def set_role():
-    data = request.get_json()
-    uid = data.get("uid")
-    role = data.get("role")
-    if not uid or not role:
-        return jsonify({"error": "UID and role are required"}), 400
-    try:
-        auth.set_custom_user_claims(uid, {"role": role})
-        return jsonify({"message": f"Role '{role}' set for user {uid}"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/signin", methods=["POST"])
-def signin():
-    data = request.get_json()
-    token = data.get("token")
-    if not token:
-        return jsonify({"error": "Token is required"}), 400
-    try:
-        decoded_token = auth.verify_id_token(token)
-        uid = decoded_token.get("uid")
-        role = decoded_token.get("custom_claims", {}).get("role", "client")
-        return jsonify({"token": token, "user": {"uid": uid, "role": role}}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 401
-
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "LicenseEase backend running."})
-
-# ──────────────────────────────────────────────
-if __name__ == "__main__":
-    app.run(debug=True)
 import os
 import requests
 from flask import Flask, request, jsonify
@@ -149,282 +6,554 @@ from firebase_admin import credentials, firestore, initialize_app, auth as admin
 from dotenv import load_dotenv
 from functools import wraps
 from collections import defaultdict
-
-from transformers import pipeline
-
-import fitz  #
+import datetime
+from werkzeug.utils import secure_filename
+import hashlib
+import uuid
 
 # ─── Load environment variables ─────────────────────────────────────────────
 load_dotenv()
-GOOGLE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-FIREBASE_API_KEY   = os.getenv("FIREBASE_API_KEY")
-if not GOOGLE_CREDENTIALS or not os.path.isfile(GOOGLE_CREDENTIALS):
-    raise RuntimeError("Set GOOGLE_APPLICATION_CREDENTIALS in .env and place your service account JSON there.")
-if not FIREBASE_API_KEY:
-    raise RuntimeError("Set FIREBASE_API_KEY in .env (from your Web app config in Firebase console)")
-
-# ─── Initialize Firebase Admin SDK ─────────────────────────────────────────
-cred = credentials.Certificate(GOOGLE_CREDENTIALS)
-initialize_app(cred)
-db = firestore.client()
 
 # ─── Flask setup ───────────────────────────────────────────────────────────
 app = Flask(__name__)
 CORS(app, origins="*")
 
-validator = pipeline(
-    "text2text-generation",
-    model="google/flan-t5-small",
-    tokenizer="google/flan-t5-small"
-)
+# Try to initialize Firebase, but continue without it if it fails
+try:
+    GOOGLE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if GOOGLE_CREDENTIALS and os.path.isfile(GOOGLE_CREDENTIALS):
+        cred = credentials.Certificate(GOOGLE_CREDENTIALS)
+        initialize_app(cred)
+        db = firestore.client()
+        print("Firebase initialized successfully")
+    else:
+        db = None
+        print("Firebase credentials not found, using mock data")
+except Exception as e:
+    print(f"Firebase initialization failed: {e}")
+    db = None
 
-# ─── Auth decorator to protect routes ───────────────────────────────────────
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header:
-            return jsonify({"error": "Missing Authorization header"}), 401
-        parts = auth_header.split()
-        if parts[0].lower() != "bearer" or len(parts) != 2:
-            return jsonify({"error": "Invalid Authorization header format"}), 401
-        id_token = parts[1]
-        try:
-            user = admin_auth.verify_id_token(id_token)
-            request.user = user
-        except Exception as e:
-            return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
-        return f(*args, **kwargs)
-    return wrapper
+# Limits
+ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
-# ─── Endpoint: Sign up new users ───────────────────────────────────────────
-@app.route('/signup', methods=['POST', 'OPTIONS'])
-def signup():
-    if request.method == 'OPTIONS':
-        # Handle preflight request for CORS
-        return jsonify({'message': 'CORS preflight response'}), 200
-    data = request.get_json(force=False)
-    print(data)
-    email = data.get('email')
-    password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Mock data storage for demo
+applications = []
+users = [
+    # Sample client profile for demo
+    {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "phone": "+250123456789",
+        "company": "Tech Solutions Ltd",
+        "role": "client",
+        "registration_date": "2024-01-15T10:30:00",
+        "applications_count": 2,
+        "last_application_date": "2024-01-20T14:45:00",
+        "status": "active"
+    }
+]  # Mock user storage
+
+def get_mock_license_data():
+    """Return mock license data for testing when Firestore is unavailable"""
+    return [
+        {
+            "name": "IT Service Licenses",
+            "licenses": [
+                {
+                    "id": "asp_001",
+                    "name": "Application Service Provider",
+                    "description": "Provide software applications and services to customers over the internet, including SaaS, web applications, and cloud-based solutions.",
+                    "application_requirements": [
+                        "Valid business registration certificate",
+                        "Technical infrastructure documentation",
+                        "Data protection and privacy compliance certificate",
+                        "Service level agreement (SLA) templates",
+                        "Business continuity and disaster recovery plan",
+                        "Professional liability insurance certificate",
+                        "Technical team qualifications and certifications"
+                    ],
+                    "renewal_requirements": [
+                        "Updated infrastructure documentation",
+                        "Renewed data protection compliance certificate",
+                        "Updated SLA templates",
+                        "Current disaster recovery plan"
+                    ],
+                    "first_time_application_fee": 50,
+                    "renewal_application_fee": 30,
+                    "first_time_license_fee": 250,
+                    "renewal_license_fee": 200,
+                    "validity": 2,
+                    "processing_time": 21
+                },
+                {
+                    "id": "ni_001", 
+                    "name": "Network Infrastructure",
+                    "description": "Deploy, maintain, and operate network infrastructure including fiber optic cables, wireless towers, data centers, and telecommunications equipment.",
+                    "application_requirements": [
+                        "Environmental impact assessment report",
+                        "Technical specifications and equipment documentation",
+                        "Safety and health compliance certificates",
+                        "Site acquisition agreements and permits",
+                        "Engineering plans and network topology diagrams",
+                        "Equipment supplier certifications",
+                        "Installation and maintenance team qualifications"
+                    ],
+                    "renewal_requirements": [
+                        "Updated environmental impact assessment",
+                        "Current safety compliance certificates",
+                        "Updated equipment documentation",
+                        "Maintenance records and reports"
+                    ],
+                    "first_time_application_fee": 75,
+                    "renewal_application_fee": 50,
+                    "first_time_license_fee": 400,
+                    "renewal_license_fee": 300,
+                    "validity": 3,
+                    "processing_time": 30
+                },
+                {
+                    "id": "nsp_001",
+                    "name": "Network Service Provider",
+                    "description": "Provide internet connectivity, telecommunications services, and network access to end users including ISP services, mobile networks, and enterprise connectivity.",
+                    "application_requirements": [
+                        "Spectrum allocation request and documentation",
+                        "Network coverage plans and service area maps",
+                        "Quality of service (QoS) guarantees and metrics",
+                        "Interconnection agreements with other providers",
+                        "Customer service and support procedures",
+                        "Billing and payment processing systems documentation",
+                        "Network security and monitoring capabilities"
+                    ],
+                    "renewal_requirements": [
+                        "Updated spectrum allocation documentation",
+                        "Current network coverage and expansion plans",
+                        "QoS performance reports",
+                        "Updated interconnection agreements"
+                    ],
+                    "first_time_application_fee": 100,
+                    "renewal_application_fee": 75,
+                    "first_time_license_fee": 500,
+                    "renewal_license_fee": 400,
+                    "validity": 5,
+                    "processing_time": 45
+                }
+            ]
+        }
+    ]
+
+@app.route('/')
+def home():
+    return jsonify({"message": "LicenseEase backend running."})
+
+@app.route('/register', methods=['POST'])
+def register():
     try:
-        # Create user in Firebase Auth
-        user_record = admin_auth.create_user(email=email, password=password)
-        print(f"Created user: {user_record.uid}")
-        # Optionally store user profile in Firestore
-        profile = data.get('profile', {'name': data['name'], 'role':"user", 'email': email, 'uid': user_record.uid})
-        if profile:
-            db.collection('users').document(user_record.uid).set(profile)
-
-        # Create a custom token for client to exchange
-        custom_token = admin_auth.create_custom_token(user_record.uid)
+        data = request.get_json()
+        
+        # Extract user data
+        email = data.get('email')
+        password = data.get('password')
+        first_name = data.get('firstName')
+        last_name = data.get('lastName')
+        company = data.get('company')
+        phone = data.get('phone')
+        
+        # Validate required fields
+        if not all([email, password, first_name, last_name]):
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Check if user already exists
+        if any(user['email'] == email for user in users):
+            return jsonify({"error": "User already exists"}), 409
+        
+        # Create user
+        user_id = str(uuid.uuid4())
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
+        new_user = {
+            "id": user_id,
+            "email": email,
+            "password": hashed_password,
+            "firstName": first_name,
+            "lastName": last_name,
+            "company": company,
+            "phone": phone,
+            "role": "client",
+            "createdAt": datetime.datetime.now().isoformat()
+        }
+        
+        users.append(new_user)
+        
+        # Return user data without password
+        user_response = {k: v for k, v in new_user.items() if k != 'password'}
+        
         return jsonify({
-            'uid': user_record.uid,
-            'customToken': custom_token.decode('utf-8')
+            "message": "User registered successfully",
+            "user": user_response,
+            "token": f"mock_token_{user_id}"
         }), 201
+        
     except Exception as e:
-        print(f"Error creating user: {e}")
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
-# ─── Endpoint: Sign in existing users ───────────────────────────────────────
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+        
+        # Find user
+        user = next((u for u in users if u['email'] == email), None)
+        if not user:
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # Verify password
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        if user['password'] != hashed_password:
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # Return user data without password
+        user_response = {k: v for k, v in user.items() if k != 'password'}
+        
+        return jsonify({
+            "message": "Login successful",
+            "user": user_response,
+            "token": f"mock_token_{user['id']}"
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/signin', methods=['POST'])
 def signin():
-    if request.method == 'OPTIONS':
-        # Handle preflight request for CORS
-        return jsonify({'message': 'CORS preflight response'}), 200
-    data = request.get_json(force=True)
-    email = data.get('email')
-    password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
-
-    # Use Firebase Auth REST API to sign in and retrieve idToken
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
-    payload = {
-        'email': email,
-        'password': password,
-        'returnSecureToken': True
-    }
-    resp = requests.post(url, json=payload)
-    if resp.ok:
-        data = resp.json()
-        # print(data)
-        data['authToken'] = data.get('idToken', None)
-        profile = db.collection('users').document(data['localId']).get()
-        if profile.exists:
-            data['profile'] = profile.to_dict()
-        else:
-            data['profile'] = {'uid': data['localId'], 'email': email, 'role': 'user', 'name': email.split('@')[0]}
-        print(data)
-        return jsonify(data), 200
-    else:
-        return jsonify(resp.json()), resp.status_code
-
-# ─── Example protected route ───────────────────────────────────────────────
-@app.route('/profile', methods=['GET'])
-@login_required
-def profile():
-    uid = request.user.get('uid')
-    doc = db.collection('users').document(uid).get()
-    if not doc.exists:
-        return jsonify({'error': 'User profile not found'}), 404
-    data = doc.to_dict()
-    data['uid'] = uid
-    return jsonify(data), 200
-
-
-
-# ─── Endpoint: Create a new service ────────────────────────────────────────
-@app.route('/create_service', methods=['POST'])
-def create_service():
-    data = request.get_json(force=True)
-    # Validate required fields
-    required_fields = [
-        'name',
-        'first_time_application_fee',
-        'first_time_license_fee',
-        'renewal_application_fee',
-        'renewal_license_fee',
-        'validity',
-        'processing_time',
-        'application_requirements',
-        'renewal_requirements'
-    ]
-    missing = [f for f in required_fields if f not in data]
-    if missing:
-        return jsonify({
-            'error': f"Missing required fields: {', '.join(missing)}"
-        }), 400
+    """Handle Firebase token-based signin"""
     try:
-        # Auto-generate a document ID
-        new_ref = db.collection('services').document()
-        new_ref.set(data)
-        return jsonify({'id': new_ref.id}), 201
+        data = request.get_json()
+        token = data.get('token')
+        
+        # In a real app, you would verify the Firebase token
+        # For now, we'll just return a mock response
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "id": "mock_user_id",
+                "email": "demo@example.com",
+                "firstName": "Demo",
+                "lastName": "User",
+                "company": "Demo Company",
+                "phone": "+250123456789",
+                "role": "client"
+            }
+        }), 200
+        
     except Exception as e:
-        print(e)
-        return jsonify({'error': str(e)}), 400
-# ─── Endpoint: List all services ────────────────────────────────────────────
-@app.route('/get_services', methods=['POST', 'GET'])
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    """Handle Firebase user role assignment"""
+    try:
+        data = request.get_json()
+        uid = data.get('uid')
+        role = data.get('role', 'client')
+        
+        # In a real app, you would store the user role in Firestore
+        # For now, we'll just return a success response
+        return jsonify({
+            "message": "User role assigned successfully",
+            "uid": uid,
+            "role": role
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/profile', methods=['GET'])
+def get_profile():
+    # Mock endpoint for getting user profile
+    # In a real app, you'd verify the token
+    return jsonify({
+        "id": "mock_user_id",
+        "email": "demo@example.com",
+        "firstName": "Demo",
+        "lastName": "User",
+        "company": "Demo Company",
+        "phone": "+250123456789",
+        "role": "client"
+    }), 200
+
+@app.route('/get_services', methods=['GET', 'POST'])
 @app.route('/services', methods=['GET'])
 def get_services():
-    print("Fetching services from Firestore")
-    docs = db.collection('services').stream()
-
-    # 1) Read all docs and flatten requirements
-    raw_items = []
-    for doc in docs:
-        item = doc.to_dict()
-        item['id'] = doc.id
-
-        # Flatten nested { "documents": [...] } into a plain list
-        app_reqs = item.get('application_requirements', {})
-        if isinstance(app_reqs, dict) and 'documents' in app_reqs:
-            item['application_requirements'] = app_reqs['documents']
-        else:
-            # If the Firestore structure is already a list or missing, fall back gracefully
-            item['application_requirements'] = app_reqs if isinstance(app_reqs, list) else []
-
-        renew_reqs = item.get('renewal_requirements', {})
-        if isinstance(renew_reqs, dict) and 'documents' in renew_reqs:
-            item['renewal_requirements'] = renew_reqs['documents']
-        else:
-            item['renewal_requirements'] = renew_reqs if isinstance(renew_reqs, list) else []
-
-        # Ensure numeric fields stay numeric; you can convert to strings here if you prefer
-        # item['validity'] = str(item.get('validity', ''))
-        # item['first_time_license_fee'] = f"{item.get('first_time_license_fee', '')} USD"
-        # …etc., if you need string formatting
-
-        raw_items.append(item)
-
-    print("Raw items:", raw_items)
-
-    # 2) Group by category field (each document must have a 'category' key)
-    categories_dict: dict[str, list[dict]] = defaultdict(list)
-    for svc in raw_items:
-        cat_name = svc.get('category', 'Uncategorized')
-        # Build the license‐object exactly as the frontend expects
-        license_obj = {
-            "id": svc["id"],
-            "name": svc.get("name", ""),
-            "application_requirements": svc.get("application_requirements", []),
-            "renewal_requirements": svc.get("renewal_requirements", []),
-            "first_time_application_fee": svc.get("first_time_application_fee", 0),
-            "renewal_application_fee": svc.get("renewal_application_fee", 0),
-            "first_time_license_fee": svc.get("first_time_license_fee", 0),
-            "renewal_license_fee": svc.get("renewal_license_fee", 0),
-            "validity": svc.get("validity", 0),
-            "processing_time": svc.get("processing_time", 0),
-        }
-        categories_dict[cat_name].append(license_obj)
-
-    # 3) Transform dict into a list of { name, licenses }
-    categories = []
-    for name, licenses in categories_dict.items():
-        categories.append({
-            "name": name,
-            "licenses": licenses
-        })
-
-    print("Grouped categories:", categories)
-    return jsonify(categories), 200
-
-
-@app.route('/get_applications', methods=['POST', 'GET'])
-def get_applications():
-    print("Fetching Applications from Firestore")
-    docs = db.collection('applications').stream()
-    services = []
-    for doc in docs:
-        item = doc.to_dict()
-        item['id'] = doc.id
-        services.append(item)
-    return jsonify(services), 200
-
-
-def extract_text_from_pdf(file_stream) -> str:
-    """
-    Extracts raw text from an uploaded PDF file stream.
-    """
-    # PyMuPDF can open from binary stream
-    doc = fitz.open(stream=file_stream.read(), filetype="pdf")
-    text = "".join(page.get_text() for page in doc)
-    return text
-
-
-# ─── Endpoint: Validate uploaded document ──────────────────────────────────
-@app.route('/validate_document', methods=['POST'])
-
-def validate_document():
-    # Expect multipart/form-data with 'file' and 'document_type'
-    file = request.files.get('file')
-    doc_type = request.form.get('document_type')
-    if not file:
-        return jsonify({'error': 'No file provided'}), 400
-    if not doc_type:
-        return jsonify({'error': 'No document_type provided'}), 400
-
     try:
-        text = extract_text_from_pdf(file)
-        # Truncate to first 2000 chars to keep prompt size reasonable
-        snippet = text[:2000]
-        prompt = (
-            f"Does the following text represent a {doc_type} document? Answer 'yes' or 'no'.\n\n"
-            f"{snippet}"
-        )
-        out = validator(
-            prompt,
-            max_new_tokens=10,
-            do_sample=False
-        )
-        answer = out[0]['generated_text'].strip()
-        match = answer.lower().startswith('yes')
-        return jsonify({'match': match, 'answer': answer}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        if db:
+            print("Fetching services from Firestore")
+            docs = db.collection('services').stream()
 
-# ─── Main entrypoint ────────────────────────────────────────────────────────
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+            # 1) Read all docs and flatten requirements
+            raw_items = []
+            for doc in docs:
+                item = doc.to_dict()
+                item['id'] = doc.id
+
+                # Flatten nested { "documents": [...] } into a plain list
+                app_reqs = item.get('application_requirements', {})
+                if isinstance(app_reqs, dict) and 'documents' in app_reqs:
+                    item['application_requirements'] = app_reqs['documents']
+                else:
+                    item['application_requirements'] = app_reqs if isinstance(app_reqs, list) else []
+
+                renew_reqs = item.get('renewal_requirements', {})
+                if isinstance(renew_reqs, dict) and 'documents' in renew_reqs:
+                    item['renewal_requirements'] = renew_reqs['documents']
+                else:
+                    item['renewal_requirements'] = renew_reqs if isinstance(renew_reqs, list) else []
+
+                raw_items.append(item)
+
+            # 2) Group by category field
+            categories_dict = defaultdict(list)
+            for svc in raw_items:
+                cat_name = svc.get('category', 'Uncategorized')
+                license_obj = {
+                    "id": svc["id"],
+                    "name": svc.get("name", ""),
+                    "application_requirements": svc.get("application_requirements", []),
+                    "renewal_requirements": svc.get("renewal_requirements", []),
+                    "first_time_application_fee": svc.get("first_time_application_fee", 0),
+                    "renewal_application_fee": svc.get("renewal_application_fee", 0),
+                    "first_time_license_fee": svc.get("first_time_license_fee", 0),
+                    "renewal_license_fee": svc.get("renewal_license_fee", 0),
+                    "validity": svc.get("validity", 0),
+                    "processing_time": svc.get("processing_time", 0),
+                }
+                categories_dict[cat_name].append(license_obj)
+
+            # 3) Transform dict into a list
+            categories = []
+            for name, licenses in categories_dict.items():
+                categories.append({
+                    "name": name,
+                    "licenses": licenses
+                })
+
+            if categories:
+                print(f"Returning {len(categories)} categories from Firestore")
+                return jsonify(categories), 200
+            else:
+                print("No Firestore data found, using mock data")
+                return jsonify(get_mock_license_data()), 200
+        else:
+            print("Using mock data (no Firestore connection)")
+            return jsonify(get_mock_license_data()), 200
+            
+    except Exception as e:
+        print(f"Error in get_services: {e}")
+        print("Falling back to mock data")
+        return jsonify(get_mock_license_data()), 200
+
+@app.route("/applications", methods=["GET"])
+def get_applications():
+    # In a real app, you would filter by user ID from token
+    # For demo, return all applications
+    return jsonify(applications)
+
+@app.route("/applications/<int:app_id>", methods=["GET"])
+def get_application(app_id):
+    """Get a specific application by ID"""
+    try:
+        app = next((a for a in applications if a["id"] == app_id), None)
+        if not app:
+            return jsonify({"error": "Application not found"}), 404
+        return jsonify(app), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/clients", methods=["GET"])
+def get_clients():
+    """Get all client profiles for admin dashboard"""
+    try:
+        # Filter users to only include clients
+        clients = [user for user in users if user.get("role") == "client"]
+        
+        # Add additional statistics for each client
+        for client in clients:
+            client_email = client.get("email")
+            client_applications = [app for app in applications if app.get("applicant_email") == client_email]
+            
+            client["applications_count"] = len(client_applications)
+            client["pending_applications"] = len([app for app in client_applications if app.get("status") == "pending"])
+            client["approved_applications"] = len([app for app in client_applications if app.get("status") == "approved"])
+            client["rejected_applications"] = len([app for app in client_applications if app.get("status") == "rejected"])
+            
+            # Get latest application date
+            if client_applications:
+                latest_app = max(client_applications, key=lambda x: x.get("submitted_at", ""))
+                client["last_application_date"] = latest_app.get("submitted_at")
+                client["last_application_type"] = latest_app.get("license_type")
+            else:
+                client["last_application_date"] = None
+                client["last_application_type"] = None
+        
+        return jsonify(clients), 200
+    except Exception as e:
+        print(f"Error fetching clients: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/clients/<client_email>", methods=["GET"])
+def get_client_profile(client_email):
+    """Get a specific client profile by email"""
+    try:
+        client = next((u for u in users if u.get("email") == client_email and u.get("role") == "client"), None)
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        # Add client's applications
+        client_applications = [app for app in applications if app.get("applicant_email") == client_email]
+        client["applications"] = client_applications
+        
+        return jsonify(client), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/applications", methods=["POST"])
+def submit_application():
+    try:
+        # Get form data
+        license_type = request.form.get("license_type")
+        description = request.form.get("description")
+        applicant_name = request.form.get("applicant_name")
+        applicant_email = request.form.get("applicant_email")
+        applicant_phone = request.form.get("applicant_phone")
+        company = request.form.get("company")
+        
+        # Validate required fields
+        if not license_type or not description:
+            return jsonify({"error": "License type and description are required"}), 400
+        
+        # Handle multiple file uploads
+        uploaded_files = []
+        files_info = []
+        
+        # Get all files from the request
+        for key in request.files:
+            files = request.files.getlist(key)
+            for file in files:
+                if file and file.filename != "":
+                    uploaded_files.append((key, file))
+        
+        if not uploaded_files:
+            return jsonify({"error": "At least one file is required"}), 400
+
+        # Process file uploads
+        for file_type, file in uploaded_files:
+            if not allowed_file(file.filename):
+                return jsonify({"error": f"Invalid file type for {file.filename}. Allowed: pdf, png, jpg, jpeg"}), 400
+
+            # Check file size (5MB limit)
+            file.seek(0, 2)  # Seek to end to get file size
+            file_size = file.tell()
+            file.seek(0)  # Reset file pointer
+            
+            if file_size > MAX_CONTENT_LENGTH:
+                return jsonify({"error": f"File {file.filename} is too large. Maximum size is 5MB."}), 400
+
+            filename = secure_filename(file.filename)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_filename = f"{timestamp}_{filename}"
+            
+            # For demo purposes, simulate file storage
+            # In production, you would save to actual storage like Firebase Storage, AWS S3, etc.
+            storage_path = f"uploads/{unique_filename}"
+            
+            files_info.append({
+                "type": file_type,
+                "filename": unique_filename,
+                "original_filename": filename,
+                "url": f"http://127.0.0.1:5000/files/{unique_filename}",
+                "size": file_size,
+                "uploaded_at": datetime.datetime.now().isoformat()
+            })
+
+        # Create application record
+        app_data = {
+            "id": len(applications) + 1,
+            "applicant_name": applicant_name,
+            "applicant_email": applicant_email,
+            "applicant_phone": applicant_phone,
+            "company": company,
+            "license_type": license_type,
+            "description": description,
+            "files": files_info,
+            "status": "pending",
+            "submitted_at": datetime.datetime.now().isoformat(),
+            "updated_at": datetime.datetime.now().isoformat(),
+            "processing_notes": [],
+            "fees": {
+                "application_fee": 50,  # You could calculate this based on license type
+                "license_fee": 250,
+                "total": 300,
+                "paid": False
+            }
+        }
+        
+        applications.append(app_data)
+        
+        # Save client profile information for admin view
+        client_profile = {
+            "name": applicant_name,
+            "email": applicant_email,
+            "phone": applicant_phone,
+            "company": company,
+            "role": "client",
+            "registration_date": datetime.datetime.now().isoformat(),
+            "applications_count": len([app for app in applications if app.get("applicant_email") == applicant_email]),
+            "last_application_date": datetime.datetime.now().isoformat(),
+            "status": "active"
+        }
+        
+        # Check if client already exists in users list
+        existing_client = next((u for u in users if u.get('email') == applicant_email), None)
+        if not existing_client:
+            # Add new client profile
+            users.append(client_profile)
+            print(f"New client profile created: {applicant_name}")
+        else:
+            # Update existing client profile
+            existing_client["applications_count"] = len([app for app in applications if app.get("applicant_email") == applicant_email])
+            existing_client["last_application_date"] = datetime.datetime.now().isoformat()
+            print(f"Client profile updated: {applicant_name}")
+        
+        # If using Firestore, you would save to database here
+        # try:
+        #     # Save application
+        #     db.collection('applications').add(app_data)
+        #     
+        #     # Save or update client profile
+        #     client_doc = db.collection('clients').document(applicant_email)
+        #     client_doc.set(client_profile, merge=True)
+        # except Exception as e:
+        #     print(f"Error saving to Firestore: {e}")
+        
+        return jsonify({
+            "message": "Application submitted successfully",
+            "data": app_data,
+            "next_step": "payment"
+        }), 201
+        
+    except Exception as e:
+        print(f"Error in submit_application: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+if __name__ == "__main__":
+    print(f"Starting server with Firebase: {'Yes' if db else 'No (using mock data)'}")
+    app.run(debug=True, port=5000)

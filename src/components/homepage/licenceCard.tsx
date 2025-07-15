@@ -12,12 +12,24 @@ export default function LicenseCards() {
   useEffect(() => {
     async function fetchServices() {
       try {
-        const res = await fetch('http://127.0.0.1:5000/get_services')
+        const res = await fetch('http://127.0.0.1:5000/get_services', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
         if (!res.ok) throw new Error(`Failed to fetch services: ${res.status}`)
         const data = await res.json()
+        
+        // Validate response structure
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid response format')
+        }
+        
         setCategories(data)
       } catch (err: any) {
-        setError(err.message)
+        console.error('Service fetch error:', err)
+        setError('Unable to load services. Please check your connection.')
       } finally {
         setLoading(false)
       }
