@@ -43,103 +43,104 @@ def allowed_file(filename):
 
 # Mock data storage for demo
 applications = []
-users = []  # Mock user storage
+users = [
+    # Sample client profile for demo
+    {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "phone": "+250123456789",
+        "company": "Tech Solutions Ltd",
+        "role": "client",
+        "registration_date": "2024-01-15T10:30:00",
+        "applications_count": 2,
+        "last_application_date": "2024-01-20T14:45:00",
+        "status": "active"
+    }
+]  # Mock user storage
 
 def get_mock_license_data():
     """Return mock license data for testing when Firestore is unavailable"""
     return [
         {
-            "name": "Business Licenses",
+            "name": "IT Service Licenses",
             "licenses": [
                 {
-                    "id": "bl_001",
-                    "name": "Import/Export License",
+                    "id": "asp_001",
+                    "name": "Application Service Provider",
+                    "description": "Provide software applications and services to customers over the internet, including SaaS, web applications, and cloud-based solutions.",
                     "application_requirements": [
-                        "Business registration certificate",
-                        "Tax clearance certificate",
-                        "Bank guarantee letter",
-                        "Business plan"
+                        "Valid business registration certificate",
+                        "Technical infrastructure documentation",
+                        "Data protection and privacy compliance certificate",
+                        "Service level agreement (SLA) templates",
+                        "Business continuity and disaster recovery plan",
+                        "Professional liability insurance certificate",
+                        "Technical team qualifications and certifications"
                     ],
                     "renewal_requirements": [
-                        "Updated financial statements",
-                        "Tax compliance certificate"
+                        "Updated infrastructure documentation",
+                        "Renewed data protection compliance certificate",
+                        "Updated SLA templates",
+                        "Current disaster recovery plan"
                     ],
                     "first_time_application_fee": 50,
                     "renewal_application_fee": 30,
-                    "first_time_license_fee": 200,
-                    "renewal_license_fee": 150,
+                    "first_time_license_fee": 250,
+                    "renewal_license_fee": 200,
                     "validity": 2,
-                    "processing_time": 14
+                    "processing_time": 21
                 },
                 {
-                    "id": "bl_002", 
-                    "name": "Trading License",
+                    "id": "ni_001", 
+                    "name": "Network Infrastructure",
+                    "description": "Deploy, maintain, and operate network infrastructure including fiber optic cables, wireless towers, data centers, and telecommunications equipment.",
                     "application_requirements": [
-                        "RDB certificate",
-                        "Company constitution",
-                        "Proof of premises",
-                        "Financial statements"
+                        "Environmental impact assessment report",
+                        "Technical specifications and equipment documentation",
+                        "Safety and health compliance certificates",
+                        "Site acquisition agreements and permits",
+                        "Engineering plans and network topology diagrams",
+                        "Equipment supplier certifications",
+                        "Installation and maintenance team qualifications"
                     ],
                     "renewal_requirements": [
-                        "Updated RDB certificate",
-                        "Annual financial report"
-                    ],
-                    "first_time_application_fee": 25,
-                    "renewal_application_fee": 15,
-                    "first_time_license_fee": 100,
-                    "renewal_license_fee": 75,
-                    "validity": 1,
-                    "processing_time": 7
-                }
-            ]
-        },
-        {
-            "name": "Professional Licenses", 
-            "licenses": [
-                {
-                    "id": "pl_001",
-                    "name": "Engineering License",
-                    "application_requirements": [
-                        "Academic credentials",
-                        "Professional experience certificate",
-                        "Character reference letters",
-                        "Professional insurance"
-                    ],
-                    "renewal_requirements": [
-                        "Continuing education certificates",
-                        "Professional development record"
+                        "Updated environmental impact assessment",
+                        "Current safety compliance certificates",
+                        "Updated equipment documentation",
+                        "Maintenance records and reports"
                     ],
                     "first_time_application_fee": 75,
-                    "renewal_application_fee": 40,
-                    "first_time_license_fee": 300,
-                    "renewal_license_fee": 200,
+                    "renewal_application_fee": 50,
+                    "first_time_license_fee": 400,
+                    "renewal_license_fee": 300,
                     "validity": 3,
-                    "processing_time": 21
-                }
-            ]
-        },
-        {
-            "name": "Transport Licenses",
-            "licenses": [
+                    "processing_time": 30
+                },
                 {
-                    "id": "tl_001",
-                    "name": "Commercial Transport License",
+                    "id": "nsp_001",
+                    "name": "Network Service Provider",
+                    "description": "Provide internet connectivity, telecommunications services, and network access to end users including ISP services, mobile networks, and enterprise connectivity.",
                     "application_requirements": [
-                        "Valid driving license",
-                        "Vehicle inspection certificate",
-                        "Insurance documents",
-                        "Route operation plan"
+                        "Spectrum allocation request and documentation",
+                        "Network coverage plans and service area maps",
+                        "Quality of service (QoS) guarantees and metrics",
+                        "Interconnection agreements with other providers",
+                        "Customer service and support procedures",
+                        "Billing and payment processing systems documentation",
+                        "Network security and monitoring capabilities"
                     ],
                     "renewal_requirements": [
-                        "Updated vehicle inspection",
-                        "Insurance renewal documents"
+                        "Updated spectrum allocation documentation",
+                        "Current network coverage and expansion plans",
+                        "QoS performance reports",
+                        "Updated interconnection agreements"
                     ],
-                    "first_time_application_fee": 40,
-                    "renewal_application_fee": 20,
-                    "first_time_license_fee": 120,
-                    "renewal_license_fee": 80,
-                    "validity": 1,
-                    "processing_time": 10
+                    "first_time_application_fee": 100,
+                    "renewal_application_fee": 75,
+                    "first_time_license_fee": 500,
+                    "renewal_license_fee": 400,
+                    "validity": 5,
+                    "processing_time": 45
                 }
             ]
         }
@@ -362,54 +363,196 @@ def get_services():
 
 @app.route("/applications", methods=["GET"])
 def get_applications():
+    # In a real app, you would filter by user ID from token
+    # For demo, return all applications
     return jsonify(applications)
+
+@app.route("/applications/<int:app_id>", methods=["GET"])
+def get_application(app_id):
+    """Get a specific application by ID"""
+    try:
+        app = next((a for a in applications if a["id"] == app_id), None)
+        if not app:
+            return jsonify({"error": "Application not found"}), 404
+        return jsonify(app), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/clients", methods=["GET"])
+def get_clients():
+    """Get all client profiles for admin dashboard"""
+    try:
+        # Filter users to only include clients
+        clients = [user for user in users if user.get("role") == "client"]
+        
+        # Add additional statistics for each client
+        for client in clients:
+            client_email = client.get("email")
+            client_applications = [app for app in applications if app.get("applicant_email") == client_email]
+            
+            client["applications_count"] = len(client_applications)
+            client["pending_applications"] = len([app for app in client_applications if app.get("status") == "pending"])
+            client["approved_applications"] = len([app for app in client_applications if app.get("status") == "approved"])
+            client["rejected_applications"] = len([app for app in client_applications if app.get("status") == "rejected"])
+            
+            # Get latest application date
+            if client_applications:
+                latest_app = max(client_applications, key=lambda x: x.get("submitted_at", ""))
+                client["last_application_date"] = latest_app.get("submitted_at")
+                client["last_application_type"] = latest_app.get("license_type")
+            else:
+                client["last_application_date"] = None
+                client["last_application_type"] = None
+        
+        return jsonify(clients), 200
+    except Exception as e:
+        print(f"Error fetching clients: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/clients/<client_email>", methods=["GET"])
+def get_client_profile(client_email):
+    """Get a specific client profile by email"""
+    try:
+        client = next((u for u in users if u.get("email") == client_email and u.get("role") == "client"), None)
+        if not client:
+            return jsonify({"error": "Client not found"}), 404
+        
+        # Add client's applications
+        client_applications = [app for app in applications if app.get("applicant_email") == client_email]
+        client["applications"] = client_applications
+        
+        return jsonify(client), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/applications", methods=["POST"])
 def submit_application():
-    license_type = request.form.get("license_type")
-    description = request.form.get("description")
-    
-    # Handle multiple file uploads
-    uploaded_files = []
-    files_info = []
-    
-    # Get all files from the request
-    for key in request.files:
-        files = request.files.getlist(key)
-        for file in files:
-            if file and file.filename != "":
-                uploaded_files.append((key, file))
-    
-    if not uploaded_files:
-        return jsonify({"error": "No files uploaded"}), 400
-
-    # For demo purposes, just store file info without actually uploading
-    for file_type, file in uploaded_files:
-        if not allowed_file(file.filename):
-            return jsonify({"error": f"Invalid file type for {file.filename}. Allowed: pdf, png, jpg, jpeg"}), 400
-
-        filename = secure_filename(file.filename)
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        unique_filename = f"{timestamp}_{filename}"
+    try:
+        # Get form data
+        license_type = request.form.get("license_type")
+        description = request.form.get("description")
+        applicant_name = request.form.get("applicant_name")
+        applicant_email = request.form.get("applicant_email")
+        applicant_phone = request.form.get("applicant_phone")
+        company = request.form.get("company")
         
-        files_info.append({
-            "type": file_type,
-            "filename": unique_filename,
-            "original_filename": filename,
-            "url": f"demo://storage/{unique_filename}"  # Demo URL
-        })
+        # Validate required fields
+        if not license_type or not description:
+            return jsonify({"error": "License type and description are required"}), 400
+        
+        # Handle multiple file uploads
+        uploaded_files = []
+        files_info = []
+        
+        # Get all files from the request
+        for key in request.files:
+            files = request.files.getlist(key)
+            for file in files:
+                if file and file.filename != "":
+                    uploaded_files.append((key, file))
+        
+        if not uploaded_files:
+            return jsonify({"error": "At least one file is required"}), 400
 
-    app_data = {
-        "id": len(applications) + 1,
-        "uid": "demo_user",
-        "license_type": license_type,
-        "description": description,
-        "files": files_info,
-        "status": "pending",
-        "submitted_at": datetime.datetime.now().strftime("%Y-%m-%d")
-    }
-    applications.append(app_data)
-    return jsonify({"message": "Application submitted.", "data": app_data}), 201
+        # Process file uploads
+        for file_type, file in uploaded_files:
+            if not allowed_file(file.filename):
+                return jsonify({"error": f"Invalid file type for {file.filename}. Allowed: pdf, png, jpg, jpeg"}), 400
+
+            # Check file size (5MB limit)
+            file.seek(0, 2)  # Seek to end to get file size
+            file_size = file.tell()
+            file.seek(0)  # Reset file pointer
+            
+            if file_size > MAX_CONTENT_LENGTH:
+                return jsonify({"error": f"File {file.filename} is too large. Maximum size is 5MB."}), 400
+
+            filename = secure_filename(file.filename)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_filename = f"{timestamp}_{filename}"
+            
+            # For demo purposes, simulate file storage
+            # In production, you would save to actual storage like Firebase Storage, AWS S3, etc.
+            storage_path = f"uploads/{unique_filename}"
+            
+            files_info.append({
+                "type": file_type,
+                "filename": unique_filename,
+                "original_filename": filename,
+                "url": f"http://127.0.0.1:5000/files/{unique_filename}",
+                "size": file_size,
+                "uploaded_at": datetime.datetime.now().isoformat()
+            })
+
+        # Create application record
+        app_data = {
+            "id": len(applications) + 1,
+            "applicant_name": applicant_name,
+            "applicant_email": applicant_email,
+            "applicant_phone": applicant_phone,
+            "company": company,
+            "license_type": license_type,
+            "description": description,
+            "files": files_info,
+            "status": "pending",
+            "submitted_at": datetime.datetime.now().isoformat(),
+            "updated_at": datetime.datetime.now().isoformat(),
+            "processing_notes": [],
+            "fees": {
+                "application_fee": 50,  # You could calculate this based on license type
+                "license_fee": 250,
+                "total": 300,
+                "paid": False
+            }
+        }
+        
+        applications.append(app_data)
+        
+        # Save client profile information for admin view
+        client_profile = {
+            "name": applicant_name,
+            "email": applicant_email,
+            "phone": applicant_phone,
+            "company": company,
+            "role": "client",
+            "registration_date": datetime.datetime.now().isoformat(),
+            "applications_count": len([app for app in applications if app.get("applicant_email") == applicant_email]),
+            "last_application_date": datetime.datetime.now().isoformat(),
+            "status": "active"
+        }
+        
+        # Check if client already exists in users list
+        existing_client = next((u for u in users if u.get('email') == applicant_email), None)
+        if not existing_client:
+            # Add new client profile
+            users.append(client_profile)
+            print(f"New client profile created: {applicant_name}")
+        else:
+            # Update existing client profile
+            existing_client["applications_count"] = len([app for app in applications if app.get("applicant_email") == applicant_email])
+            existing_client["last_application_date"] = datetime.datetime.now().isoformat()
+            print(f"Client profile updated: {applicant_name}")
+        
+        # If using Firestore, you would save to database here
+        # try:
+        #     # Save application
+        #     db.collection('applications').add(app_data)
+        #     
+        #     # Save or update client profile
+        #     client_doc = db.collection('clients').document(applicant_email)
+        #     client_doc.set(client_profile, merge=True)
+        # except Exception as e:
+        #     print(f"Error saving to Firestore: {e}")
+        
+        return jsonify({
+            "message": "Application submitted successfully",
+            "data": app_data,
+            "next_step": "payment"
+        }), 201
+        
+    except Exception as e:
+        print(f"Error in submit_application: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
     print(f"Starting server with Firebase: {'Yes' if db else 'No (using mock data)'}")

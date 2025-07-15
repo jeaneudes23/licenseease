@@ -100,7 +100,7 @@ export default function ApplyLicense() {
 
   const handleStartApplication = () => {
     if (selectedCategory) {
-      router.push(`/client-dashboard?tab=licenses&category=${selectedCategory}`)
+      router.push(`/submit-application?category=${selectedCategory}`)
     }
   }
 
