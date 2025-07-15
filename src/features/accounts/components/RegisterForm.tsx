@@ -14,7 +14,10 @@ import Link from 'next/link'
 export default function RegisterForm() {
   const router = useRouter()
 
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [company, setCompany] = useState('')
+  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
@@ -39,7 +42,7 @@ export default function RegisterForm() {
       const uid = userCredential.user.uid
 
       // Send UID and role to backend to assign default role
-      const res = await fetch('http://localhost:5000/signup', {
+      const res = await fetch('http://127.0.0.1:5000/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid, role: 'client' }) // default role
@@ -63,14 +66,50 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="grid gap-6 text-sm">
       <div className="grid gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1">
+            <label htmlFor="firstName" className="primary">First Name</label>
+            <input
+              id="firstName"
+              type="text"
+              className="primary"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-1">
+            <label htmlFor="lastName" className="primary">Last Name</label>
+            <input
+              id="lastName"
+              type="text"
+              className="primary"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+        </div>
         <div className="grid gap-1">
-          <label htmlFor="name" className="primary">Name</label>
+          <label htmlFor="company" className="primary">Company</label>
           <input
-            id="name"
+            id="company"
             type="text"
             className="primary"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            required
+          />
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="phone" className="primary">Phone</label>
+          <input
+            id="phone"
+            type="tel"
+            className="primary"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+250123456789"
             required
           />
         </div>

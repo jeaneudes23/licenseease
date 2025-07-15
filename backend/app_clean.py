@@ -8,8 +8,6 @@ from functools import wraps
 from collections import defaultdict
 import datetime
 from werkzeug.utils import secure_filename
-import hashlib
-import uuid
 
 # ─── Load environment variables ─────────────────────────────────────────────
 load_dotenv()
@@ -43,7 +41,6 @@ def allowed_file(filename):
 
 # Mock data storage for demo
 applications = []
-users = []  # Mock user storage
 
 def get_mock_license_data():
     """Return mock license data for testing when Firestore is unavailable"""
@@ -148,147 +145,6 @@ def get_mock_license_data():
 @app.route('/')
 def home():
     return jsonify({"message": "LicenseEase backend running."})
-
-@app.route('/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json()
-        
-        # Extract user data
-        email = data.get('email')
-        password = data.get('password')
-        first_name = data.get('firstName')
-        last_name = data.get('lastName')
-        company = data.get('company')
-        phone = data.get('phone')
-        
-        # Validate required fields
-        if not all([email, password, first_name, last_name]):
-            return jsonify({"error": "Missing required fields"}), 400
-        
-        # Check if user already exists
-        if any(user['email'] == email for user in users):
-            return jsonify({"error": "User already exists"}), 409
-        
-        # Create user
-        user_id = str(uuid.uuid4())
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        
-        new_user = {
-            "id": user_id,
-            "email": email,
-            "password": hashed_password,
-            "firstName": first_name,
-            "lastName": last_name,
-            "company": company,
-            "phone": phone,
-            "role": "client",
-            "createdAt": datetime.datetime.now().isoformat()
-        }
-        
-        users.append(new_user)
-        
-        # Return user data without password
-        user_response = {k: v for k, v in new_user.items() if k != 'password'}
-        
-        return jsonify({
-            "message": "User registered successfully",
-            "user": user_response,
-            "token": f"mock_token_{user_id}"
-        }), 201
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        
-        if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
-        
-        # Find user
-        user = next((u for u in users if u['email'] == email), None)
-        if not user:
-            return jsonify({"error": "Invalid credentials"}), 401
-        
-        # Verify password
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        if user['password'] != hashed_password:
-            return jsonify({"error": "Invalid credentials"}), 401
-        
-        # Return user data without password
-        user_response = {k: v for k, v in user.items() if k != 'password'}
-        
-        return jsonify({
-            "message": "Login successful",
-            "user": user_response,
-            "token": f"mock_token_{user['id']}"
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/signin', methods=['POST'])
-def signin():
-    """Handle Firebase token-based signin"""
-    try:
-        data = request.get_json()
-        token = data.get('token')
-        
-        # In a real app, you would verify the Firebase token
-        # For now, we'll just return a mock response
-        return jsonify({
-            "message": "Login successful",
-            "user": {
-                "id": "mock_user_id",
-                "email": "demo@example.com",
-                "firstName": "Demo",
-                "lastName": "User",
-                "company": "Demo Company",
-                "phone": "+250123456789",
-                "role": "client"
-            }
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/signup', methods=['POST'])
-def signup():
-    """Handle Firebase user role assignment"""
-    try:
-        data = request.get_json()
-        uid = data.get('uid')
-        role = data.get('role', 'client')
-        
-        # In a real app, you would store the user role in Firestore
-        # For now, we'll just return a success response
-        return jsonify({
-            "message": "User role assigned successfully",
-            "uid": uid,
-            "role": role
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/profile', methods=['GET'])
-def get_profile():
-    # Mock endpoint for getting user profile
-    # In a real app, you'd verify the token
-    return jsonify({
-        "id": "mock_user_id",
-        "email": "demo@example.com",
-        "firstName": "Demo",
-        "lastName": "User",
-        "company": "Demo Company",
-        "phone": "+250123456789",
-        "role": "client"
-    }), 200
 
 @app.route('/get_services', methods=['GET', 'POST'])
 @app.route('/services', methods=['GET'])

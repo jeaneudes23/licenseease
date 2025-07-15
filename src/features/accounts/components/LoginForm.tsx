@@ -29,7 +29,7 @@ export default function LoginForm() {
       const token = await userCredential.user.getIdToken(true) // Force refresh
 
       // Send token to backend to retrieve role and user info
-      const res = await fetch('http://localhost:5000/signin', {
+      const res = await fetch('http://127.0.0.1:5000/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
