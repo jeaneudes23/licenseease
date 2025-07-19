@@ -98,7 +98,7 @@ export default function LicensesDataTable() {
         ) : error ? (
           <TableRow>
             <TableCell colSpan={6} className="text-center py-8">
-              <div className="text-red-600">
+              <div className="text-red-600 dark:text-red-400">
                 <p className="font-medium">Error loading licenses</p>
                 <p className="text-sm">{error}</p>
               </div>
@@ -107,7 +107,7 @@ export default function LicensesDataTable() {
         ) : rows.length === 0 ? (
           <TableRow>
             <TableCell colSpan={6} className="text-center py-8">
-              <div className="text-gray-500">
+              <div className="text-gray-500 dark:text-gray-400">
                 <p>No licenses found</p>
               </div>
             </TableCell>
@@ -117,7 +117,7 @@ export default function LicensesDataTable() {
             <TableRow key={index}>
               <TableCell className="font-medium">{license.name}</TableCell>
               <TableCell className="max-w-md">
-                <p className="text-sm text-gray-600 line-clamp-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
                   {license.description || 'No description available'}
                 </p>
               </TableCell>
@@ -126,10 +126,10 @@ export default function LicensesDataTable() {
               <TableCell>{license.validity} Years</TableCell>
               <TableCell>
                 <div className="flex gap-2">
-                  <button className="text-blue-600 hover:text-blue-800 text-sm">
+                  <button className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm">
                     Edit
                   </button>
-                  <button className="text-gray-600 hover:text-gray-800 text-sm">
+                  <button className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 text-sm">
                     View
                   </button>
                 </div>

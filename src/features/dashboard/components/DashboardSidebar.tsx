@@ -5,7 +5,7 @@ import { Building, Component, Dock, FileText, GroupIcon, Home, LayoutDashboard, 
 
 export default function DashboardSidebar() {
   return (
-    <aside className='flex flex-col px-4 h-dvh'>
+    <aside className='flex flex-col px-4 h-dvh bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700'>
       <div className='py-6'>
         <ApplicationLogo />
       </div>

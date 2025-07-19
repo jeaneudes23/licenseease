@@ -64,22 +64,22 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit} className="grid gap-6 text-sm">
       <div className="grid gap-3">
         <div className="grid gap-1">
-          <label htmlFor="email" className="primary">Email address</label>
+          <label htmlFor="email" className="text-sm font-medium text-foreground">Email address</label>
           <input
             id="email"
             type="email"
-            className="primary"
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
         <div className="grid gap-1">
-          <label htmlFor="password" className="primary">Password</label>
+          <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
           <input
             id="password"
             type="password"
-            className="primary"
+            className="bg-background border border-input rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -87,7 +87,7 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
       <div className="grid gap-6">
         <SubmitButton size="lg" disabled={loading}>

@@ -9,11 +9,6 @@ interface ClientDashboardLayoutProps extends PropsWithChildren {
   onTabChange: (tab: string) => void
   onLogout: () => void
   darkMode: boolean
-  onToggleDarkMode: () => void
-  userProfile: {
-    name: string
-    profilePicture?: string
-  }
 }
 
 export default function ClientDashboardLayout({
@@ -21,9 +16,7 @@ export default function ClientDashboardLayout({
   activeTab,
   onTabChange,
   onLogout,
-  darkMode,
-  onToggleDarkMode,
-  userProfile
+  darkMode
 }: ClientDashboardLayoutProps) {
   return (
     <div className={`${darkMode ? 'dark' : ''}`}>
@@ -34,12 +27,7 @@ export default function ClientDashboardLayout({
           onLogout={onLogout}
         />
         <div className='h-dvh flex flex-col'>
-          <ClientNavbar
-            darkMode={darkMode}
-            onToggleDarkMode={onToggleDarkMode}
-            onLogout={onLogout}
-            userProfile={userProfile}
-          />
+          <ClientNavbar />
           <div className='flex-grow overflow-y-auto pb-12'>
             {children}
           </div>

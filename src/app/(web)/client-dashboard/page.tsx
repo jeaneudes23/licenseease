@@ -261,8 +261,6 @@ export default function ClientDashboard() {
       onTabChange={setTab}
       onLogout={logout}
       darkMode={darkMode}
-      onToggleDarkMode={toggleTheme}
-      userProfile={userProfile}
     >
      
       {tab === 'dashboard' && (
