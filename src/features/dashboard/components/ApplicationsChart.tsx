@@ -40,9 +40,9 @@ export function ApplicationsChart() {
         <div className="flex justify-between items-center">
           <CardTitle>Applications</CardTitle>
           <div className="text-xs">
-            <select name="status" id="" className="primary">
+            <select name="status" id="" className="bg-background border border-input rounded-md px-3 py-1 text-sm text-foreground">
               <option value="approved">Approved</option>
-              <option value="approved">Rejected</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
         </div>
@@ -82,12 +82,12 @@ export function ApplicationsChart() {
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="text-xs grid grid-cols-2 gap-4 max-w-md">
           <div className="grid gap-1">
-            <label htmlFor="from" className="primary">From</label>
-            <input type="date" className="primary" name="from" />
+            <label htmlFor="from" className="text-sm font-medium text-foreground">From</label>
+            <input type="date" className="bg-background border border-input rounded-md px-3 py-1 text-sm text-foreground" name="from" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="to" className="primary">To</label>
-            <input type="date" className="primary" name="to" />
+            <label htmlFor="to" className="text-sm font-medium text-foreground">To</label>
+            <input type="date" className="bg-background border border-input rounded-md px-3 py-1 text-sm text-foreground" name="to" />
           </div>
         </div>
       </CardFooter>

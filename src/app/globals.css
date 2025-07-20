@@ -79,12 +79,12 @@
   }
 
   label.primary {
-    @apply font-medium tracking-wide
+    @apply font-medium tracking-wide text-foreground
   }
 
   input.primary, 
   textarea.primary,
   select.primary {
-    @apply border p-2 rounded-md
+    @apply border border-input bg-background text-foreground p-2 rounded-md placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
   }
 }

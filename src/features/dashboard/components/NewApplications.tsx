@@ -27,7 +27,7 @@ export default function NewApplications() {
                   <TableCell>{application.user}</TableCell>
                   <TableCell>{application.license}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 text-xs font-medium text-white rounded-md ${application.status === 'approved' ? 'bg-accent' : application.status === 'rejected' ? 'bg-red-600' : 'bg-gray-600'}`}>{application.status}</span>
+                    <span className={`px-2 py-1 text-xs font-medium text-white rounded-md ${application.status === 'approved' ? 'bg-green-500 dark:bg-green-600' : application.status === 'rejected' ? 'bg-red-500 dark:bg-red-600' : 'bg-gray-500 dark:bg-gray-600'}`}>{application.status}</span>
                   </TableCell>
                   <TableCell>{application.date}</TableCell>
                 </TableRow>

@@ -25,7 +25,7 @@ export default function DashboardStatsWidget() {
                 <CardDescription className='font-medium capitalize'>{status}</CardDescription>
                 <CardTitle className='text-2xl'>{STATS[status]}</CardTitle>
               </div>
-              <div className={`text-white grid place-content-center size-12 self-center rounded-xl ${status === 'approved' ? 'bg-accent' : status === 'rejected' ? 'bg-red-600' : 'bg-gray-400'}`}>
+              <div className={`text-white dark:text-gray-900 grid place-content-center size-12 self-center rounded-xl ${status === 'approved' ? 'bg-green-500 dark:bg-green-400' : status === 'rejected' ? 'bg-red-500 dark:bg-red-400' : 'bg-gray-500 dark:bg-gray-400'}`}>
                 {ICONS[status]}
               </div>
             </div>
