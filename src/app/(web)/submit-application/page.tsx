@@ -193,6 +193,14 @@ function SubmitApplicationContent() {
       
       setMessage('✅ Application submitted successfully!')
       
+      // Store payment info for the payment page
+      const paymentInfo = {
+        id: data.application_id || Date.now().toString(),
+        licenseType: selectedCategory.title,
+        fees: selectedCategory.fees
+      }
+      localStorage.setItem('pendingPayment', JSON.stringify(paymentInfo))
+      
       // Reset form
       setForm({
         description: '',
@@ -206,7 +214,7 @@ function SubmitApplicationContent() {
 
       // Redirect to payment page after 2 seconds
       setTimeout(() => {
-        router.push(`/client-dashboard?tab=dashboard&payment=pending`)
+        router.push(`/client-dashboard/payment?applicationId=${paymentInfo.id}&licenseType=${encodeURIComponent(selectedCategory.title)}&fees=${encodeURIComponent(JSON.stringify(selectedCategory.fees))}`)
       }, 2000)
 
     } catch (error) {
