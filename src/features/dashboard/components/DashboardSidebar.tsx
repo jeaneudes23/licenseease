@@ -31,17 +31,7 @@ export default function DashboardSidebar() {
           label='agents'
           icon={<ShieldCheck className='size-5' />}
         />
-        <SidebarLink
-          href='/admin/clients'
-          label='clients'
-          icon={<UsersRound className='size-5' />}
-        />
         <p className='font-medium mt-4 border-muted-foreground text-muted-foreground border-b'>OTHER</p>
-        <SidebarLink
-          href='/admin/categories'
-          label='License categories'
-          icon={<Component className='size-5' />}
-        />
         <SidebarLink
           href='/admin/companies'
           label='companies'

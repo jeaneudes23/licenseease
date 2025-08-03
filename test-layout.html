@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Layout Test</title>
+    <script src="http://localhost:3000/_next/static/chunks/webpack.js"></script>
+</head>
+<body>
+    <div id="test">
+        Testing if the layout components work properly...
+    </div>
+    <script>
+        // Simple test to see if we can access the page
+        fetch('http://localhost:3000/client-dashboard')
+            .then(response => response.text())
+            .then(html => {
+                console.log('Client dashboard page loaded successfully');
+                document.getElementById('test').innerHTML = 'Client dashboard test passed!';
+            })
+            .catch(error => {
+                console.error('Error loading client dashboard:', error);
+                document.getElementById('test').innerHTML = 'Client dashboard test failed: ' + error.message;
+            });
+    </script>
+</body>
+</html>

@@ -23,13 +23,18 @@ export const apiRequest = async (
     // Get fresh token (Firebase handles refresh automatically)
     const token = await user.getIdToken(true)
     
+    const headers: any = {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${token}`,
+    }
+    
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': options.body instanceof FormData ? undefined : 'application/json',
-      },
+      headers,
     })
 
     const data = await response.json()
@@ -40,13 +45,18 @@ export const apiRequest = async (
         const newToken = await user.getIdToken(true)
         localStorage.setItem('authToken', newToken)
         
+        const retryHeaders: any = {
+          ...(options.headers || {}),
+          'Authorization': `Bearer ${newToken}`,
+        }
+        
+        if (!(options.body instanceof FormData)) {
+          retryHeaders['Content-Type'] = 'application/json'
+        }
+
         const retryResponse = await fetch(url, {
           ...options,
-          headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${newToken}`,
-            'Content-Type': options.body instanceof FormData ? undefined : 'application/json',
-          },
+          headers: retryHeaders,
         })
 
         if (!retryResponse.ok) {
