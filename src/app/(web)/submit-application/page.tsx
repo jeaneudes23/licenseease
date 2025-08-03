@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function SubmitApplication() {
+function SubmitApplicationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -35,7 +35,7 @@ export default function SubmitApplication() {
         'Professional liability insurance certificate',
         'Technical team qualifications and certifications'
       ],
-      processingTime: '14-21 business days',
+      processingTime: '5-10 business days',
       fees: {
         application: 50,
         license: 250,
@@ -56,7 +56,7 @@ export default function SubmitApplication() {
         'Equipment supplier certifications',
         'Installation and maintenance team qualifications'
       ],
-      processingTime: '21-30 business days',
+      processingTime: '10-25 business days',
       fees: {
         application: 75,
         license: 400,
@@ -77,7 +77,7 @@ export default function SubmitApplication() {
         'Billing and payment processing systems documentation',
         'Network security and monitoring capabilities'
       ],
-      processingTime: '30-45 business days',
+      processingTime: '7-21 business days',
       fees: {
         application: 100,
         license: 500,
@@ -193,6 +193,14 @@ export default function SubmitApplication() {
       
       setMessage('✅ Application submitted successfully!')
       
+      // Store payment info for the payment page
+      const paymentInfo = {
+        id: data.application_id || Date.now().toString(),
+        licenseType: selectedCategory.title,
+        fees: selectedCategory.fees
+      }
+      localStorage.setItem('pendingPayment', JSON.stringify(paymentInfo))
+      
       // Reset form
       setForm({
         description: '',
@@ -206,7 +214,7 @@ export default function SubmitApplication() {
 
       // Redirect to payment page after 2 seconds
       setTimeout(() => {
-        router.push(`/client-dashboard?tab=dashboard&payment=pending`)
+        router.push(`/client-dashboard/payment?applicationId=${paymentInfo.id}&licenseType=${encodeURIComponent(selectedCategory.title)}&fees=${encodeURIComponent(JSON.stringify(selectedCategory.fees))}`)
       }, 2000)
 
     } catch (error) {
@@ -432,5 +440,13 @@ export default function SubmitApplication() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SubmitApplication() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SubmitApplicationContent />
+    </Suspense>
   )
 }

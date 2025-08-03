@@ -28,7 +28,7 @@ export default function ApplyLicense() {
         'Submit evidence of staff technical training and certifications',
         'Demonstrate compliance with international data protection standards'
       ],
-      processingTime: '14-21 business days',
+      processingTime: '5-10 business days',
       fees: {
         application: 50,
         license: 250,
@@ -56,7 +56,7 @@ export default function ApplyLicense() {
         'Include emergency response and maintenance procedures',
         'Submit proof of technical staff qualifications and training'
       ],
-      processingTime: '21-30 business days',
+      processingTime: '10-25 business days',
       fees: {
         application: 75,
         license: 400,
@@ -84,7 +84,7 @@ export default function ApplyLicense() {
         'Submit evidence of network monitoring and security measures',
         'Provide financial projections and sustainability plans'
       ],
-      processingTime: '30-45 business days',
+      processingTime: '7-21 business days',
       fees: {
         application: 100,
         license: 500,

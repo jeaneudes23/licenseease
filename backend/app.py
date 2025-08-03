@@ -10,6 +10,7 @@ import datetime
 from werkzeug.utils import secure_filename
 import hashlib
 import uuid
+import stripe
 
 # ─── Load environment variables ─────────────────────────────────────────────
 load_dotenv()
@@ -17,6 +18,9 @@ load_dotenv()
 # ─── Flask setup ───────────────────────────────────────────────────────────
 app = Flask(__name__)
 CORS(app, origins="*")
+
+# ─── Stripe setup ──────────────────────────────────────────────────────────
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_51234567890")  # Use test key by default
 
 # Try to initialize Firebase, but continue without it if it fails
 try:
@@ -547,11 +551,142 @@ def submit_application():
         return jsonify({
             "message": "Application submitted successfully",
             "data": app_data,
+            "application_id": application_id,
             "next_step": "payment"
         }), 201
         
     except Exception as e:
         print(f"Error in submit_application: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+# ─── Stripe Payment Endpoints ──────────────────────────────────────────────
+
+@app.route("/create-payment-intent", methods=["POST"])
+def create_payment_intent():
+    """Create a Stripe Payment Intent for card payments"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['amount', 'currency', 'applicationId', 'userId']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Create payment intent with Stripe
+        intent = stripe.PaymentIntent.create(
+            amount=data['amount'],  # Amount in cents
+            currency=data['currency'],
+            automatic_payment_methods={
+                'enabled': True,
+            },
+            metadata={
+                'application_id': data['applicationId'],
+                'user_id': data['userId'],
+                'license_type': data.get('licenseType', ''),
+            }
+        )
+        
+        return jsonify({
+            'clientSecret': intent.client_secret,
+            'paymentIntentId': intent.id
+        })
+        
+    except stripe.error.StripeError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(f"Error creating payment intent: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/process-mobile-payment", methods=["POST"])
+def process_mobile_payment():
+    """Process mobile money payment (MTN, Airtel)"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['amount', 'phoneNumber', 'applicationId', 'userId', 'email']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        phone_number = data['phoneNumber']
+        amount = data['amount']
+        application_id = data['applicationId']
+        currency = data.get('currency', 'USD')
+        
+        # Convert to RWF if needed (mobile money typically uses local currency)
+        if currency != 'RWF':
+            # Exchange rate: 1 USD = 1320 RWF
+            amount_rwf = amount * 1320
+        else:
+            amount_rwf = amount
+        
+        # Simulate mobile money payment request
+        # In a real implementation, you would integrate with MTN Mobile Money API or Airtel Money API
+        payment_data = {
+            "payment_id": f"mobile_{application_id}_{datetime.datetime.now().timestamp()}",
+            "amount": amount_rwf,
+            "currency": "RWF",
+            "phone_number": phone_number,
+            "application_id": application_id,
+            "user_id": data['userId'],
+            "status": "pending",
+            "created_at": datetime.datetime.now().isoformat(),
+            "payment_method": "mobile_money"
+        }
+        
+        # Store payment record (in production, save to database)
+        # Here we'll just simulate success
+        print(f"Mobile payment initiated: {payment_data}")
+        
+        # Simulate sending SMS/USSD request to user's phone
+        return jsonify({
+            "message": "Payment request sent to your phone",
+            "payment_id": payment_data["payment_id"],
+            "amount": amount_rwf,
+            "currency": "RWF",
+            "status": "pending"
+        }), 200
+        
+    except Exception as e:
+        print(f"Error processing mobile payment: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/payment-webhook", methods=["POST"])
+def payment_webhook():
+    """Webhook to handle payment status updates from Stripe"""
+    try:
+        payload = request.get_data()
+        sig_header = request.headers.get('stripe-signature')
+        
+        # Verify webhook signature (use your webhook secret)
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+        
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        except ValueError:
+            return jsonify({"error": "Invalid payload"}), 400
+        except stripe.error.SignatureVerificationError:
+            return jsonify({"error": "Invalid signature"}), 400
+        
+        # Handle the event
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            application_id = payment_intent['metadata'].get('application_id')
+            
+            # Update application status to "paid"
+            app = next((a for a in applications if a.get('id') == application_id), None)
+            if app:
+                app['payment_status'] = 'paid'
+                app['payment_date'] = datetime.datetime.now().isoformat()
+                app['status'] = 'under_review'  # Move to next stage after payment
+                print(f"Payment successful for application {application_id}")
+        
+        return jsonify({"status": "success"}), 200
+        
+    except Exception as e:
+        print(f"Error in payment webhook: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":

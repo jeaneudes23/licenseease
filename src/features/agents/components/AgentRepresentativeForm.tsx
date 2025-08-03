@@ -1,17 +1,16 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Plus, Trash2, User, Phone, Mail, IdCard, Briefcase } from 'lucide-react'
+import { Plus, Trash2, User, Phone, Mail, Upload, FileText } from 'lucide-react'
 
 interface Representative {
   id: string
-  fullName: string
+  names: string
+  idPassport: string
+  telephone: string
   email: string
-  phone: string
-  nationalId: string
-  passport?: string
-  role: string
-  address: string
+  identificationDocument?: File | null
+  communicationLanguage: string
 }
 
 interface AgentRepresentativeFormProps {
@@ -21,19 +20,20 @@ interface AgentRepresentativeFormProps {
 
 export default function AgentRepresentativeForm({ representatives, onUpdateRepresentatives }: AgentRepresentativeFormProps) {
   const [newRep, setNewRep] = useState<Omit<Representative, 'id'>>({
-    fullName: '',
+    names: '',
+    idPassport: '',
+    telephone: '',
     email: '',
-    phone: '',
-    nationalId: '',
-    passport: '',
-    role: '',
-    address: ''
+    identificationDocument: null,
+    communicationLanguage: ''
   })
+
+  const [uploadError, setUploadError] = useState('')
 
   const generateId = () => Math.random().toString(36).substr(2, 9)
 
   const handleAddRepresentative = () => {
-    if (!newRep.fullName || !newRep.email || !newRep.phone || !newRep.nationalId || !newRep.role) {
+    if (!newRep.names || !newRep.idPassport || !newRep.telephone || !newRep.email || !newRep.communicationLanguage) {
       alert('Please fill in all required fields')
       return
     }
@@ -45,14 +45,14 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
 
     onUpdateRepresentatives([...representatives, representative])
     setNewRep({
-      fullName: '',
+      names: '',
+      idPassport: '',
+      telephone: '',
       email: '',
-      phone: '',
-      nationalId: '',
-      passport: '',
-      role: '',
-      address: ''
+      identificationDocument: null,
+      communicationLanguage: ''
     })
+    setUploadError('')
   }
 
   const handleRemoveRepresentative = (id: string) => {
@@ -64,6 +64,53 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
       ...prev,
       [field]: value
     }))
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    setUploadError('')
+
+    if (!file) return
+
+    // Check file size (50MB max)
+    const maxSize = 50 * 1024 * 1024 // 50MB in bytes
+    if (file.size > maxSize) {
+      setUploadError('File size must be less than 50MB')
+      return
+    }
+
+    // Check file type
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'application/pdf',
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/vnd.rar'
+    ]
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    const allowedExtensions = ['jpeg', 'jpg', 'png', 'pdf', 'zip', 'rar']
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension || '')) {
+      setUploadError('Only JPEG, JPG, PNG, PDF, ZIP, and RAR files are allowed')
+      return
+    }
+
+    setNewRep(prev => ({
+      ...prev,
+      identificationDocument: file
+    }))
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
   return (
@@ -87,11 +134,10 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
                   <div className='flex-1'>
                     <h5 className='font-semibold flex items-center gap-2'>
                       <User className='size-4' />
-                      {rep.fullName}
+                      {rep.names}
                     </h5>
-                    <p className='text-sm text-muted-foreground flex items-center gap-2'>
-                      <Briefcase className='size-3' />
-                      {rep.role}
+                    <p className='text-sm text-muted-foreground'>
+                      Language: {rep.communicationLanguage}
                     </p>
                   </div>
                   <button
@@ -108,24 +154,19 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
                   </div>
                   <div className='flex items-center gap-2'>
                     <Phone className='size-3' />
-                    <span>{rep.phone}</span>
+                    <span>{rep.telephone}</span>
                   </div>
-                  <div className='flex items-center gap-2'>
-                    <IdCard className='size-3' />
-                    <span>ID: {rep.nationalId}</span>
+                  <div className='flex items-center gap-2 col-span-2'>
+                    <FileText className='size-3' />
+                    <span>ID/Passport: {rep.idPassport}</span>
                   </div>
-                  {rep.passport && (
-                    <div className='flex items-center gap-2'>
-                      <IdCard className='size-3' />
-                      <span>Passport: {rep.passport}</span>
+                  {rep.identificationDocument && (
+                    <div className='flex items-center gap-2 col-span-2'>
+                      <Upload className='size-3' />
+                      <span>Document: {rep.identificationDocument.name}</span>
                     </div>
                   )}
                 </div>
-                {rep.address && (
-                  <p className='text-sm text-muted-foreground mt-2'>
-                    Address: {rep.address}
-                  </p>
-                )}
               </div>
             ))}
           </div>
@@ -137,17 +178,46 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <div>
               <label className='block text-sm font-medium mb-1'>
-                Full Name *
+                Names *
               </label>
               <input
                 type='text'
-                value={newRep.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
+                value={newRep.names}
+                onChange={(e) => handleInputChange('names', e.target.value)}
                 className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='Enter full name'
+                placeholder='Enter full names'
                 required
               />
             </div>
+
+            <div>
+              <label className='block text-sm font-medium mb-1'>
+                ID/Passport *
+              </label>
+              <input
+                type='text'
+                value={newRep.idPassport}
+                onChange={(e) => handleInputChange('idPassport', e.target.value)}
+                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
+                placeholder='Enter ID or passport number'
+                required
+              />
+            </div>
+
+            <div>
+              <label className='block text-sm font-medium mb-1'>
+                Telephone *
+              </label>
+              <input
+                type='tel'
+                value={newRep.telephone}
+                onChange={(e) => handleInputChange('telephone', e.target.value)}
+                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
+                placeholder='Enter telephone number'
+                required
+              />
+            </div>
+
             <div>
               <label className='block text-sm font-medium mb-1'>
                 Email Address *
@@ -161,70 +231,54 @@ export default function AgentRepresentativeForm({ representatives, onUpdateRepre
                 required
               />
             </div>
+
             <div>
               <label className='block text-sm font-medium mb-1'>
-                Phone Number *
+                Communication Language *
               </label>
-              <input
-                type='tel'
-                value={newRep.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+              <select
+                value={newRep.communicationLanguage}
+                onChange={(e) => handleInputChange('communicationLanguage', e.target.value)}
                 className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='Enter phone number'
                 required
-              />
+              >
+                <option value="">Select language</option>
+                <option value="english">English</option>
+                <option value="kinyarwanda">Kinyarwanda</option>
+                <option value="french">French</option>
+                <option value="swahili">Swahili</option>
+                <option value="other">Other</option>
+              </select>
             </div>
+
             <div>
               <label className='block text-sm font-medium mb-1'>
-                National ID *
+                Identification Document
               </label>
-              <input
-                type='text'
-                value={newRep.nationalId}
-                onChange={(e) => handleInputChange('nationalId', e.target.value)}
-                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='Enter national ID number'
-                required
-              />
-            </div>
-            <div>
-              <label className='block text-sm font-medium mb-1'>
-                Passport Number
-              </label>
-              <input
-                type='text'
-                value={newRep.passport}
-                onChange={(e) => handleInputChange('passport', e.target.value)}
-                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='Enter passport number (optional)'
-              />
-            </div>
-            <div>
-              <label className='block text-sm font-medium mb-1'>
-                Role/Position *
-              </label>
-              <input
-                type='text'
-                value={newRep.role}
-                onChange={(e) => handleInputChange('role', e.target.value)}
-                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='e.g., Local Manager, Sales Representative'
-                required
-              />
-            </div>
-            <div className='md:col-span-2'>
-              <label className='block text-sm font-medium mb-1'>
-                Address
-              </label>
-              <input
-                type='text'
-                value={newRep.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600'
-                placeholder='Enter local address in Rwanda'
-              />
+              <div className='space-y-2'>
+                <input
+                  type='file'
+                  onChange={handleFileUpload}
+                  accept='.jpeg,.jpg,.png,.pdf,.zip,.rar'
+                  className='w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100'
+                />
+                <p className='text-xs text-gray-500'>
+                  Accepts: JPEG, JPG, PNG, PDF, ZIP, RAR (Max: 50MB)
+                </p>
+                {uploadError && (
+                  <p className='text-xs text-red-500'>{uploadError}</p>
+                )}
+                {newRep.identificationDocument && (
+                  <div className='flex items-center gap-2 text-xs text-green-600'>
+                    <FileText className='size-3' />
+                    <span>{newRep.identificationDocument.name}</span>
+                    <span>({formatFileSize(newRep.identificationDocument.size)})</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
           <button
             onClick={handleAddRepresentative}
             className='mt-4 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2'

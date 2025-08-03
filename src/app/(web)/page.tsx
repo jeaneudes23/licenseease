@@ -121,7 +121,7 @@ export default function Home() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Secure & Compliant</h3>
-            <p className="text-gray-600">Bank-grade security for your documents and data. Fully compliant with Rwanda's regulatory standards.</p>
+            <p className="text-gray-600">Bank-grade security for your documents and data. Fully compliant with Rwanda&apos;s regulatory standards.</p>
           </div>
         </div>
 
