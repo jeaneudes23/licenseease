@@ -179,23 +179,40 @@ function SubmitApplicationContent() {
         formData.append(`otherDocument_${index}`, file)
       })
 
-      const response = await fetch('http://127.0.0.1:5000/applications', {
+      console.log('Submitting application to:', 'http://127.0.0.1:5002/applications')
+      
+      const response = await fetch('http://127.0.0.1:5002/applications', {
         method: 'POST',
         body: formData,
       })
 
+      console.log('Response status:', response.status, response.statusText)
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to submit application')
+        let errorMessage = 'Failed to submit application'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          console.error('Failed to parse error response:', e)
+          errorMessage = `Server error (${response.status}): ${response.statusText}`
+        }
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
+      console.log('Success response:', data)
+      
+      // Validate the response has required fields
+      if (!data.application_id) {
+        throw new Error('Invalid response: missing application ID')
+      }
       
       setMessage('✅ Application submitted successfully!')
       
       // Store payment info for the payment page
       const paymentInfo = {
-        id: data.application_id || Date.now().toString(),
+        id: data.application_id,
         licenseType: selectedCategory.title,
         fees: selectedCategory.fees
       }
@@ -212,7 +229,7 @@ function SubmitApplicationContent() {
         }
       })
 
-      // Redirect to payment page after 2 seconds
+      // Redirect to payment page after showing success message
       setTimeout(() => {
         router.push(`/client-dashboard/payment?applicationId=${paymentInfo.id}&licenseType=${encodeURIComponent(selectedCategory.title)}&fees=${encodeURIComponent(JSON.stringify(selectedCategory.fees))}`)
       }, 2000)

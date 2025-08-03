@@ -11,6 +11,8 @@ from werkzeug.utils import secure_filename
 import hashlib
 import uuid
 import stripe
+import random
+import string
 
 # ─── Load environment variables ─────────────────────────────────────────────
 load_dotenv()
@@ -44,6 +46,14 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def generate_app_id():
+    """Generate a short random application ID (7 characters max)"""
+    # Mix of uppercase letters and numbers for better readability
+    chars = string.ascii_uppercase + string.digits
+    # Generate 6 random characters
+    random_part = ''.join(random.choices(chars, k=6))
+    return f"A{random_part}"  # A prefix + 6 random chars = 7 total
 
 # Mock data storage for demo
 applications = []
@@ -429,10 +439,82 @@ def get_client_profile(client_email):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Simple health check endpoint"""
+    return jsonify({"status": "ok", "message": "Server is running"}), 200
+
+@app.route("/test-submit", methods=["POST"])
+def test_submit():
+    """Test endpoint to debug submission issues"""
+    try:
+        print("=== TEST SUBMIT REQUEST ===")
+        print(f"Content-Type: {request.content_type}")
+        print(f"Headers: {dict(request.headers)}")
+        print(f"Form keys: {list(request.form.keys())}")
+        print(f"Files keys: {list(request.files.keys())}")
+        
+        # Log form data
+        for key in request.form.keys():
+            print(f"Form field {key}: {request.form.get(key)}")
+        
+        return jsonify({
+            "message": "Test endpoint working",
+            "form_keys": list(request.form.keys()),
+            "files_keys": list(request.files.keys()),
+            "content_type": request.content_type
+        }), 200
+        
+    except Exception as e:
+        print(f"ERROR in test_submit: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": f"Test error: {str(e)}"}), 500
+
+@app.route("/applications-minimal", methods=["POST"])
+def submit_application_minimal():
+    """Minimal version to test basic functionality"""
+    try:
+        print("=== MINIMAL SUBMIT APPLICATION ===")
+        
+        # Get basic form data
+        license_type = request.form.get("license_type")
+        description = request.form.get("description")
+        applicant_name = request.form.get("applicant_name")
+        applicant_email = request.form.get("applicant_email")
+        
+        print(f"Received: {license_type}, {description}, {applicant_name}, {applicant_email}")
+        
+        # Basic validation
+        if not license_type or not description or not applicant_name or not applicant_email:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Check for files
+        if not request.files:
+            return jsonify({"error": "At least one file required"}), 400
+        
+        # Create simple response
+        app_id = len(applications) + 1
+        return jsonify({
+            "message": "Application submitted successfully",
+            "application_id": app_id,
+            "next_step": "payment"
+        }), 201
+        
+    except Exception as e:
+        print(f"MINIMAL ENDPOINT ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Minimal endpoint error: {str(e)}"}), 500
+
 @app.route("/applications", methods=["POST"])
 def submit_application():
+    print("=== SUBMIT APPLICATION ===")
+    print(f"Content-Type: {request.content_type}")
+    print(f"Method: {request.method}")
+    
     try:
-        # Get form data
+        # Get basic form data
         license_type = request.form.get("license_type")
         description = request.form.get("description")
         applicant_name = request.form.get("applicant_name")
@@ -440,61 +522,50 @@ def submit_application():
         applicant_phone = request.form.get("applicant_phone")
         company = request.form.get("company")
         
-        # Validate required fields
-        if not license_type or not description:
-            return jsonify({"error": "License type and description are required"}), 400
+        print(f"License Type: {license_type}")
+        print(f"Description: {description}")
+        print(f"Applicant: {applicant_name} ({applicant_email})")
         
-        # Handle multiple file uploads
-        uploaded_files = []
+        # Basic validation
+        if not license_type or not description or not applicant_name or not applicant_email:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Check files
+        files_count = len(request.files)
+        print(f"Files uploaded: {files_count}")
+        
+        if files_count == 0:
+            return jsonify({"error": "At least one file required"}), 400
+        
+        # Generate unique random application ID
+        app_id = generate_app_id()
+        
+        # Ensure ID is unique
+        while any(app.get("id") == app_id for app in applications):
+            app_id = generate_app_id()
+        
+        # Process files info for storage
         files_info = []
-        
-        # Get all files from the request
         for key in request.files:
             files = request.files.getlist(key)
             for file in files:
                 if file and file.filename != "":
-                    uploaded_files.append((key, file))
+                    files_info.append({
+                        "type": key,
+                        "filename": file.filename,
+                        "original_filename": file.filename,
+                        "url": f"http://127.0.0.1:5002/files/{file.filename}",
+                        "size": 0,
+                        "uploaded_at": datetime.datetime.now().isoformat()
+                    })
         
-        if not uploaded_files:
-            return jsonify({"error": "At least one file is required"}), 400
-
-        # Process file uploads
-        for file_type, file in uploaded_files:
-            if not allowed_file(file.filename):
-                return jsonify({"error": f"Invalid file type for {file.filename}. Allowed: pdf, png, jpg, jpeg"}), 400
-
-            # Check file size (5MB limit)
-            file.seek(0, 2)  # Seek to end to get file size
-            file_size = file.tell()
-            file.seek(0)  # Reset file pointer
-            
-            if file_size > MAX_CONTENT_LENGTH:
-                return jsonify({"error": f"File {file.filename} is too large. Maximum size is 5MB."}), 400
-
-            filename = secure_filename(file.filename)
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            unique_filename = f"{timestamp}_{filename}"
-            
-            # For demo purposes, simulate file storage
-            # In production, you would save to actual storage like Firebase Storage, AWS S3, etc.
-            storage_path = f"uploads/{unique_filename}"
-            
-            files_info.append({
-                "type": file_type,
-                "filename": unique_filename,
-                "original_filename": filename,
-                "url": f"http://127.0.0.1:5000/files/{unique_filename}",
-                "size": file_size,
-                "uploaded_at": datetime.datetime.now().isoformat()
-            })
-
-        # Create application record
+        # Create application data
         app_data = {
-            "id": len(applications) + 1,
+            "id": app_id,
             "applicant_name": applicant_name,
             "applicant_email": applicant_email,
-            "applicant_phone": applicant_phone,
-            "company": company,
+            "applicant_phone": applicant_phone or "",
+            "company": company or "",
             "license_type": license_type,
             "description": description,
             "files": files_info,
@@ -503,61 +574,53 @@ def submit_application():
             "updated_at": datetime.datetime.now().isoformat(),
             "processing_notes": [],
             "fees": {
-                "application_fee": 50,  # You could calculate this based on license type
+                "application_fee": 50,
                 "license_fee": 250,
                 "total": 300,
                 "paid": False
             }
         }
         
+        # Store in memory
         applications.append(app_data)
+        print(f"Application {app_id} created successfully")
         
-        # Save client profile information for admin view
-        client_profile = {
-            "name": applicant_name,
-            "email": applicant_email,
-            "phone": applicant_phone,
-            "company": company,
-            "role": "client",
-            "registration_date": datetime.datetime.now().isoformat(),
-            "applications_count": len([app for app in applications if app.get("applicant_email") == applicant_email]),
-            "last_application_date": datetime.datetime.now().isoformat(),
-            "status": "active"
-        }
-        
-        # Check if client already exists in users list
-        existing_client = next((u for u in users if u.get('email') == applicant_email), None)
-        if not existing_client:
-            # Add new client profile
-            users.append(client_profile)
-            print(f"New client profile created: {applicant_name}")
+        # Save to Firestore if available
+        if db:
+            try:
+                db.collection('applications').document(app_id).set(app_data)
+                print(f"Application {app_id} saved to Firestore")
+                
+                # Save client profile
+                client_profile = {
+                    "name": applicant_name,
+                    "email": applicant_email,
+                    "phone": applicant_phone or "",
+                    "company": company or "",
+                    "role": "client",
+                    "registration_date": datetime.datetime.now().isoformat(),
+                    "last_application_date": datetime.datetime.now().isoformat(),
+                    "status": "active"
+                }
+                db.collection('clients').document(applicant_email).set(client_profile, merge=True)
+                print(f"Client profile saved for {applicant_email}")
+                
+            except Exception as firestore_error:
+                print(f"Warning: Firestore save failed: {firestore_error}")
         else:
-            # Update existing client profile
-            existing_client["applications_count"] = len([app for app in applications if app.get("applicant_email") == applicant_email])
-            existing_client["last_application_date"] = datetime.datetime.now().isoformat()
-            print(f"Client profile updated: {applicant_name}")
-        
-        # If using Firestore, you would save to database here
-        # try:
-        #     # Save application
-        #     db.collection('applications').add(app_data)
-        #     
-        #     # Save or update client profile
-        #     client_doc = db.collection('clients').document(applicant_email)
-        #     client_doc.set(client_profile, merge=True)
-        # except Exception as e:
-        #     print(f"Error saving to Firestore: {e}")
+            print("Using mock data storage (Firestore not available)")
         
         return jsonify({
             "message": "Application submitted successfully",
-            "data": app_data,
-            "application_id": application_id,
+            "application_id": app_id,
             "next_step": "payment"
         }), 201
         
     except Exception as e:
-        print(f"Error in submit_application: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # ─── Stripe Payment Endpoints ──────────────────────────────────────────────
 
@@ -691,4 +754,5 @@ def payment_webhook():
 
 if __name__ == "__main__":
     print(f"Starting server with Firebase: {'Yes' if db else 'No (using mock data)'}")
-    app.run(debug=True, port=5000)
+    print("Server starting on http://127.0.0.1:5002 (port 5000 has conflicts)")
+    app.run(debug=True, port=5002, host='127.0.0.1')
