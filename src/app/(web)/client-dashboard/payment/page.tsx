@@ -2,6 +2,140 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_51234567890')
+
+// Stripe Card Form Component
+function StripeCardForm({ paymentForm, handleInputChange, onPayment, isProcessing, totalAmount, currency }) {
+  const stripe = useStripe()
+  const elements = useElements()
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    
+    if (!stripe || !elements) {
+      return
+    }
+
+    const cardElement = elements.getElement(CardElement)
+    await onPayment(stripe, cardElement)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Email */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Email Address *
+        </label>
+        <input
+          type="email"
+          value={paymentForm.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="your@email.com"
+          required
+        />
+      </div>
+
+      {/* Card Element */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Card Information *
+        </label>
+        <div className="p-3 border border-gray-300 rounded-lg">
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  '::placeholder': {
+                    color: '#aab7c4',
+                  },
+                },
+              },
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Cardholder Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Cardholder Name *
+        </label>
+        <input
+          type="text"
+          value={paymentForm.cardholderName}
+          onChange={(e) => handleInputChange('cardholderName', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="John Doe"
+          required
+        />
+      </div>
+
+      {/* Country */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Country/Region *
+        </label>
+        <select
+          value={paymentForm.country}
+          onChange={(e) => handleInputChange('country', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          required
+        >
+          <option value="">Select country</option>
+          <option value="RW">Rwanda</option>
+          <option value="KE">Kenya</option>
+          <option value="UG">Uganda</option>
+          <option value="TZ">Tanzania</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="DE">Germany</option>
+          <option value="FR">France</option>
+        </select>
+      </div>
+
+      {/* Optional Phone */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Phone Number (Optional)
+        </label>
+        <input
+          type="tel"
+          value={paymentForm.phoneNumber}
+          onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="+250 781 234 567"
+        />
+      </div>
+
+      {/* Pay Button */}
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+      >
+        {isProcessing ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing Payment...
+          </>
+        ) : (
+          `Pay ${totalAmount} ${currency}`
+        )}
+      </button>
+    </form>
+  )
+}
 
 export default function PaymentPage() {
   const router = useRouter()
@@ -23,11 +157,11 @@ export default function PaymentPage() {
     phoneNumber: ''
   })
 
-  // Currency exchange rates (RWF as base)
+  // Currency exchange rates (USD as base)
   const exchangeRates = {
-    USD: 0.00076, // 1 RWF = 0.00076 USD
-    EUR: 0.00070, // 1 RWF = 0.00070 EUR
-    RWF: 1        // 1 RWF = 1 RWF
+    USD: 1,       // 1 USD = 1 USD
+    EUR: 0.92,    // 1 USD = 0.92 EUR
+    RWF: 1320     // 1 USD = 1320 RWF (current exchange rate)
   }
 
   const currencies = [
@@ -77,12 +211,9 @@ export default function PaymentPage() {
     }
   }, [searchParams, router, user])
 
-  // Convert amount to selected currency
+  // Convert amount from USD to selected currency
   const convertAmount = (amountInUSD: number) => {
-    // First convert USD to RWF (assuming base prices are in USD)
-    const amountInRWF = amountInUSD / exchangeRates.USD
-    // Then convert to selected currency
-    return amountInRWF * exchangeRates[selectedCurrency]
+    return amountInUSD * exchangeRates[selectedCurrency]
   }
 
   // Format currency display
@@ -107,14 +238,9 @@ export default function PaymentPage() {
     }
   }
 
-  const handlePayment = async () => {
-    if (!application || !user) {
-      setMessage('Missing payment information. Please try again.')
-      return
-    }
-
-    if (!validateForm()) {
-      setMessage('Please fill in all required fields.')
+  const handleStripePayment = async (stripe, cardElement) => {
+    if (!stripe || !cardElement) {
+      setMessage('❌ Payment system unavailable. Please try again.')
       return
     }
 
@@ -123,33 +249,118 @@ export default function PaymentPage() {
 
     try {
       const totalAmountUSD = application.fees.application + application.fees.license
-      const paymentData = {
-        applicationId: application.id,
-        userId: user.id || user.email,
-        amount: totalAmountUSD,
-        currency: selectedCurrency,
-        method: paymentMethod,
-        licenseType: application.licenseType,
-        paymentDetails: paymentForm
+      
+      // Create payment intent on the backend
+      const response = await fetch('http://127.0.0.1:5000/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: Math.round(totalAmountUSD * 100), // Stripe expects amount in cents
+          currency: selectedCurrency.toLowerCase(),
+          applicationId: application.id,
+          userId: user.id || user.email,
+          licenseType: application.licenseType,
+          paymentDetails: paymentForm
+        }),
+      })
+
+      const { clientSecret, error } = await response.json()
+
+      if (error) {
+        throw new Error(error)
       }
 
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Confirm payment with Stripe Elements
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: paymentForm.cardholderName,
+            email: paymentForm.email,
+            phone: paymentForm.phoneNumber,
+            address: {
+              country: paymentForm.country,
+            },
+          },
+        },
+      })
 
-      // In a real app, this would make an API call to process payment
-      console.log('Processing payment:', paymentData)
+      if (stripeError) {
+        throw new Error(stripeError.message)
+      }
 
-      setMessage('✅ Payment processed successfully! Redirecting to dashboard...')
-      
-      setTimeout(() => {
-        router.push('/client-dashboard?tab=applications&status=paid')
-      }, 2000)
+      if (paymentIntent.status === 'succeeded') {
+        setMessage('✅ Payment processed successfully! Redirecting to dashboard...')
+        
+        setTimeout(() => {
+          router.push('/client-dashboard?tab=applications&status=paid')
+        }, 2000)
+      }
 
     } catch (error) {
       console.error('Payment error:', error)
-      setMessage('❌ Payment failed. Please try again.')
+      setMessage(`❌ Payment failed: ${error.message || 'Please try again.'}`)
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleMobileMoneyPayment = async () => {
+    setIsProcessing(true)
+    setMessage('')
+
+    try {
+      const totalAmountUSD = application.fees.application + application.fees.license
+      
+      const response = await fetch('http://127.0.0.1:5000/process-mobile-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: totalAmountUSD,
+          currency: selectedCurrency,
+          phoneNumber: paymentForm.phoneNumber,
+          applicationId: application.id,
+          userId: user.id || user.email,
+          licenseType: application.licenseType,
+          email: paymentForm.email
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Mobile payment failed')
+      }
+
+      setMessage('✅ Payment request sent to your phone. Please check your mobile money app and confirm the payment.')
+      
+      // Poll for payment status
+      setTimeout(() => {
+        router.push('/client-dashboard?tab=applications&status=pending-payment')
+      }, 3000)
+
+    } catch (error) {
+      console.error('Mobile payment error:', error)
+      setMessage(`❌ Payment failed: ${error.message || 'Please try again.'}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handlePayment = async (stripe, cardElement) => {
+    if (!application || !user) {
+      setMessage('Missing payment information. Please try again.')
+      return
+    }
+
+    if (paymentMethod === 'card') {
+      await handleStripePayment(stripe, cardElement)
+    } else {
+      await handleMobileMoneyPayment()
     }
   }
 
@@ -166,8 +377,42 @@ export default function PaymentPage() {
 
   const totalAmountUSD = application.fees.application + application.fees.license
   const totalAmountSelected = convertAmount(totalAmountUSD)
-  const totalAmountRWF = convertAmount(totalAmountUSD)
+  const totalAmountRWF = totalAmountUSD * exchangeRates.RWF // Always show RWF equivalent
 
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentPageContent 
+        application={application}
+        user={user}
+        message={message}
+        setMessage={setMessage}
+        selectedCurrency={selectedCurrency}
+        setSelectedCurrency={setSelectedCurrency}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        paymentForm={paymentForm}
+        handleInputChange={handleInputChange}
+        isProcessing={isProcessing}
+        handlePayment={handlePayment}
+        handleMobileMoneyPayment={handleMobileMoneyPayment}
+        totalAmountUSD={totalAmountUSD}
+        totalAmountSelected={totalAmountSelected}
+        totalAmountRWF={totalAmountRWF}
+        currencies={currencies}
+        formatCurrency={formatCurrency}
+        convertAmount={convertAmount}
+        router={router}
+      />
+    </Elements>
+  )
+}
+
+function PaymentPageContent({ 
+  application, user, message, setMessage, selectedCurrency, setSelectedCurrency,
+  paymentMethod, setPaymentMethod, paymentForm, handleInputChange, isProcessing,
+  handlePayment, handleMobileMoneyPayment, totalAmountUSD, totalAmountSelected, 
+  totalAmountRWF, currencies, formatCurrency, convertAmount, router 
+}) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -312,140 +557,33 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <form className="space-y-4">
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  value={paymentForm.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
+            {paymentMethod === 'card' ? (
+              <StripeCardForm
+                paymentForm={paymentForm}
+                handleInputChange={handleInputChange}
+                onPayment={handlePayment}
+                isProcessing={isProcessing}
+                totalAmount={formatCurrency(totalAmountSelected, selectedCurrency)}
+                currency={selectedCurrency}
+              />
+            ) : (
+              <form className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={paymentForm.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="your@email.com"
+                    required
+                  />
+                </div>
 
-              {paymentMethod === 'card' ? (
-                <>
-                  {/* Card Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Card Number *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={paymentForm.cardNumber}
-                        onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="1234 5678 9012 3456"
-                        maxLength={19}
-                        required
-                      />
-                      <div className="absolute right-3 top-3 flex space-x-1">
-                        <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">V</div>
-                        <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center font-bold">M</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expiry and CVC */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Month *
-                      </label>
-                      <select
-                        value={paymentForm.expiryMonth}
-                        onChange={(e) => handleInputChange('expiryMonth', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">MM</option>
-                        {Array.from({length: 12}, (_, i) => (
-                          <option key={i+1} value={String(i+1).padStart(2, '0')}>
-                            {String(i+1).padStart(2, '0')}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Year *
-                      </label>
-                      <select
-                        value={paymentForm.expiryYear}
-                        onChange={(e) => handleInputChange('expiryYear', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">YY</option>
-                        {Array.from({length: 10}, (_, i) => (
-                          <option key={i} value={String(new Date().getFullYear() + i).slice(-2)}>
-                            {String(new Date().getFullYear() + i).slice(-2)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CVC *
-                      </label>
-                      <input
-                        type="text"
-                        value={paymentForm.cvc}
-                        onChange={(e) => handleInputChange('cvc', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="123"
-                        maxLength={4}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Cardholder Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cardholder Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentForm.cardholderName}
-                      onChange={(e) => handleInputChange('cardholderName', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-
-                  {/* Country */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Country/Region *
-                    </label>
-                    <select
-                      value={paymentForm.country}
-                      onChange={(e) => handleInputChange('country', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Select country</option>
-                      <option value="RW">Rwanda</option>
-                      <option value="KE">Kenya</option>
-                      <option value="UG">Uganda</option>
-                      <option value="TZ">Tanzania</option>
-                      <option value="US">United States</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="DE">Germany</option>
-                      <option value="FR">France</option>
-                    </select>
-                  </div>
-                </>
-              ) : (
-                /* Mobile Money Fields */
+                {/* Mobile Money Fields */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Phone Number *
@@ -469,44 +607,28 @@ export default function PaymentPage() {
                     We'll send a payment request to your mobile money account
                   </p>
                 </div>
-              )}
 
-              {/* Optional Phone for Card */}
-              {paymentMethod === 'card' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number (Optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={paymentForm.phoneNumber}
-                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="+250 781 234 567"
-                  />
-                </div>
-              )}
-
-              {/* Pay Button */}
-              <button
-                type="button"
-                onClick={handlePayment}
-                disabled={isProcessing || !validateForm()}
-                className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-              >
-                {isProcessing ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing Payment...
-                  </>
-                ) : (
-                  `Pay ${formatCurrency(totalAmountSelected, selectedCurrency)}`
-                )}
-              </button>
-            </form>
+                {/* Pay Button */}
+                <button
+                  type="button"
+                  onClick={handleMobileMoneyPayment}
+                  disabled={isProcessing || !paymentForm.email || !paymentForm.phoneNumber}
+                  className="w-full bg-green-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  {isProcessing ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing Payment...
+                    </>
+                  ) : (
+                    `Pay ${formatCurrency(totalAmountSelected, selectedCurrency)} with Mobile Money`
+                  )}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
