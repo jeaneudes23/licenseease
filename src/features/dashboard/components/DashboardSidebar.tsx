@@ -1,7 +1,7 @@
 import ApplicationLogo from '@/components/ApplicationLogo'
 import React from 'react'
 import SidebarLink from './SidebarLink'
-import { Building, Component, Dock, FileText, GroupIcon, Home, LayoutDashboard, ListCheck, ShieldCheck, UsersRound } from 'lucide-react'
+import { Building, Component, Dock, FileText, GroupIcon, Home, LayoutDashboard, ListCheck, UsersRound } from 'lucide-react'
 
 export default function DashboardSidebar() {
   return (
@@ -25,13 +25,7 @@ export default function DashboardSidebar() {
           label='applications'
           icon={<ListCheck className='size-5' />}
         />
-        <p className='font-medium mt-4 border-muted-foreground text-muted-foreground border-b'>USERS</p>
-        <SidebarLink
-          href='/admin/agents'
-          label='agents'
-          icon={<ShieldCheck className='size-5' />}
-        />
-        <p className='font-medium mt-4 border-muted-foreground text-muted-foreground border-b'>OTHER</p>
+        <p className='font-medium mt-4 border-muted-foreground text-muted-foreground border-b'>MANAGEMENT</p>
         <SidebarLink
           href='/admin/companies'
           label='companies'
