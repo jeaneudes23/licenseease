@@ -42,7 +42,7 @@ export default function LicensesDataTable() {
         setLoading(true)
         setError(null)
         
-        const response = await fetch('http://127.0.0.1:5000/get_services', {
+        const response = await fetch('http://127.0.0.1:5002/get_services', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -115,15 +115,36 @@ export default function LicensesDataTable() {
         ) : (
           rows.map((license, index) => (
             <TableRow key={index}>
-              <TableCell className="font-medium">{license.name}</TableCell>
+              <TableCell>
+                <div className="font-medium text-gray-900 dark:text-white">
+                  {license.name}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  ID: {license.id}
+                </div>
+              </TableCell>
               <TableCell className="max-w-md">
                 <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
                   {license.description || 'No description available'}
                 </p>
               </TableCell>
-              <TableCell>{license.category}</TableCell>
-              <TableCell className="font-medium">${license.first_time_license_fee}</TableCell>
-              <TableCell>{license.validity} Years</TableCell>
+              <TableCell>
+                <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {license.category}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="font-medium">${license.first_time_license_fee}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  App fee: ${license.first_time_application_fee}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="font-medium">{license.validity} Years</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {license.processing_time} days processing
+                </div>
+              </TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   <button className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm">
