@@ -34,13 +34,15 @@ interface CompanyRepresentativesTabProps {
   representatives: Representative[]
   onUpdateCompany: (info: CompanyInfo) => void
   onUpdateRepresentatives: (reps: Representative[]) => void
+  userEmail?: string
 }
 
 export default function CompanyRepresentativesTab({
   companyInfo,
   representatives,
   onUpdateCompany,
-  onUpdateRepresentatives
+  onUpdateRepresentatives,
+  userEmail
 }: CompanyRepresentativesTabProps) {
   const [isEditingCompany, setIsEditingCompany] = useState(false)
   const [isAddingRep, setIsAddingRep] = useState(false)
@@ -73,11 +75,34 @@ export default function CompanyRepresentativesTab({
     }))
   }
 
-  const handleSaveCompany = () => {
-    onUpdateCompany(companyFormData)
-    setIsEditingCompany(false)
-    setMessage('✅ Company information updated successfully!')
-    setTimeout(() => setMessage(''), 3000)
+  const handleSaveCompany = async () => {
+    try {
+      // Save to backend
+      const response = await fetch('http://127.0.0.1:5002/companies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyInfo: companyFormData,
+          representatives: representatives,
+          userEmail: userEmail
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save company information')
+      }
+
+      onUpdateCompany(companyFormData)
+      setIsEditingCompany(false)
+      setMessage('✅ Company information saved successfully!')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Error saving company:', error)
+      setMessage('❌ Failed to save company information. Please try again.')
+      setTimeout(() => setMessage(''), 3000)
+    }
   }
 
   const handleCancelCompanyEdit = () => {
@@ -85,7 +110,7 @@ export default function CompanyRepresentativesTab({
     setIsEditingCompany(false)
   }
 
-  const handleAddRepresentative = () => {
+  const handleAddRepresentative = async () => {
     if (!newRepFormData.fullName || !newRepFormData.email || !newRepFormData.telephone) {
       setMessage('❌ Please fill in all required fields for the representative.')
       setTimeout(() => setMessage(''), 3000)
@@ -97,18 +122,43 @@ export default function CompanyRepresentativesTab({
       ...newRepFormData
     }
 
-    onUpdateRepresentatives([...representatives, newRep])
-    setNewRepFormData({
-      fullName: '',
-      idPassport: '',
-      telephone: '',
-      email: '',
-      communicationLanguage: 'English',
-      role: 'Representative'
-    })
-    setIsAddingRep(false)
-    setMessage('✅ Representative added successfully!')
-    setTimeout(() => setMessage(''), 3000)
+    const updatedReps = [...representatives, newRep]
+
+    try {
+      // Save to backend
+      const response = await fetch('http://127.0.0.1:5002/companies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyInfo: companyFormData,
+          representatives: updatedReps,
+          userEmail: userEmail
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save representative')
+      }
+
+      onUpdateRepresentatives(updatedReps)
+      setNewRepFormData({
+        fullName: '',
+        idPassport: '',
+        telephone: '',
+        email: '',
+        communicationLanguage: 'English',
+        role: 'Representative'
+      })
+      setIsAddingRep(false)
+      setMessage('✅ Representative added successfully!')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Error saving representative:', error)
+      setMessage('❌ Failed to save representative. Please try again.')
+      setTimeout(() => setMessage(''), 3000)
+    }
   }
 
   const handleDeleteRepresentative = (id: string) => {

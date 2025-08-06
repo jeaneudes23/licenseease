@@ -353,6 +353,7 @@ export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabP
           representatives={representatives}
           onUpdateCompany={handleUpdateCompany}
           onUpdateRepresentatives={handleUpdateRepresentatives}
+          userEmail={userProfile.email}
         />
       )}
     </div>

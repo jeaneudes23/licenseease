@@ -72,6 +72,34 @@ users = [
     }
 ]  # Mock user storage
 
+# Companies storage
+companies = [
+    {
+        "id": "1",
+        "companyName": "Tech Solutions Ltd",
+        "nationality": "rwandan",
+        "legalType": "limited_company",
+        "identificationNumber": "REG123456",
+        "address": "Kigali, Rwanda",
+        "telephone": "+250123456789",
+        "email": "info@techsolutions.rw",
+        "creationDate": "2023-01-15",
+        "representatives": [
+            {
+                "id": "1",
+                "fullName": "John Doe",
+                "idPassport": "ID123456789",
+                "telephone": "+250123456789",
+                "email": "john.doe@techsolutions.rw",
+                "communicationLanguage": "English",
+                "role": "CEO"
+            }
+        ],
+        "registeredAt": "2024-01-15T10:30:00",
+        "status": "active"
+    }
+]
+
 def get_mock_license_data():
     """Return mock license data for testing when Firestore is unavailable"""
     return [
@@ -618,6 +646,101 @@ def submit_application():
         
     except Exception as e:
         print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# ─── Company Management Endpoints ──────────────────────────────────────────
+
+@app.route("/companies", methods=["GET"])
+def get_companies():
+    """Get all companies for admin dashboard"""
+    try:
+        if db:
+            # Try to get from Firestore
+            companies_ref = db.collection('companies')
+            companies_docs = companies_ref.stream()
+            
+            firestore_companies = []
+            for doc in companies_docs:
+                company_data = doc.to_dict()
+                company_data['id'] = doc.id
+                firestore_companies.append(company_data)
+            
+            if firestore_companies:
+                return jsonify(firestore_companies), 200
+        
+        # Fallback to mock data
+        return jsonify(companies), 200
+        
+    except Exception as e:
+        print(f"Error fetching companies: {e}")
+        # Return mock data as fallback
+        return jsonify(companies), 200
+
+@app.route("/companies", methods=["POST"])
+def save_company():
+    """Save or update company information from client dashboard"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        company_info = data.get('companyInfo', {})
+        representatives = data.get('representatives', [])
+        user_email = data.get('userEmail', '')
+        
+        print(f"Saving company data for user: {user_email}")
+        print(f"Company: {company_info.get('companyName', 'Unknown')}")
+        print(f"Representatives: {len(representatives)}")
+        
+        # Generate company ID
+        company_id = generate_app_id()
+        while any(comp.get("id") == company_id for comp in companies):
+            company_id = generate_app_id()
+        
+        # Create company record
+        company_data = {
+            "id": company_id,
+            **company_info,
+            "representatives": representatives,
+            "registeredAt": datetime.datetime.now().isoformat(),
+            "status": "active",
+            "submittedBy": user_email
+        }
+        
+        # Check if company already exists for this user
+        existing_company_index = None
+        for i, comp in enumerate(companies):
+            if comp.get('submittedBy') == user_email:
+                existing_company_index = i
+                break
+        
+        if existing_company_index is not None:
+            # Update existing company
+            companies[existing_company_index] = company_data
+            print(f"Updated existing company for {user_email}")
+        else:
+            # Add new company
+            companies.append(company_data)
+            print(f"Added new company for {user_email}")
+        
+        # Save to Firestore if available
+        if db:
+            try:
+                db.collection('companies').document(company_id).set(company_data)
+                print(f"Company {company_id} saved to Firestore")
+            except Exception as firestore_error:
+                print(f"Warning: Firestore save failed: {firestore_error}")
+        
+        return jsonify({
+            "message": "Company information saved successfully",
+            "company_id": company_id
+        }), 201
+        
+    except Exception as e:
+        print(f"Error saving company: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Server error: {str(e)}"}), 500
