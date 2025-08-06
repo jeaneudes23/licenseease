@@ -1,7 +1,32 @@
 "use client"
 
 import React, { useState, useRef } from 'react'
-import { Camera, Save, Edit2, Mail, Phone, MapPin, User } from 'lucide-react'
+import { Camera, Save, Edit2, Mail, Phone, MapPin, User, Building } from 'lucide-react'
+import CompanyRepresentativesTab from './CompanyRepresentativesTab'
+
+interface Representative {
+  id: string
+  fullName: string
+  idPassport: string
+  telephone: string
+  email: string
+  communicationLanguage: string
+  role: string
+}
+
+interface CompanyInfo {
+  companyName: string
+  nationality: string
+  legalType: string
+  idType: string
+  identificationNumber: string
+  address: string
+  poBox: string
+  fax: string
+  telephone: string
+  email: string
+  creationDate: string
+}
 
 interface ProfileTabProps {
   userProfile: {
@@ -10,11 +35,13 @@ interface ProfileTabProps {
     phone?: string
     address?: string
     profilePicture?: string
+    company?: string
   }
   onUpdateProfile: (profile: any) => void
 }
 
 export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState('personal')
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: userProfile.name || '',
@@ -25,6 +52,33 @@ export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabP
   })
   const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Company and representatives state
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+    companyName: userProfile.company || '',
+    nationality: '',
+    legalType: '',
+    idType: '',
+    identificationNumber: '',
+    address: userProfile.address || '',
+    poBox: '',
+    fax: '',
+    telephone: userProfile.phone || '',
+    email: userProfile.email || '',
+    creationDate: ''
+  })
+  const [representatives, setRepresentatives] = useState<Representative[]>([
+    // Sample representative for demo
+    {
+      id: '1',
+      fullName: userProfile.name || '',
+      idPassport: '',
+      telephone: userProfile.phone || '',
+      email: userProfile.email || '',
+      communicationLanguage: 'English',
+      role: 'Primary Contact'
+    }
+  ])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,19 +126,51 @@ export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabP
     setIsEditing(false)
   }
 
+  const handleUpdateCompany = (info: CompanyInfo) => {
+    setCompanyInfo(info)
+    // Also update the main profile with company info
+    onUpdateProfile({
+      ...userProfile,
+      company: info.companyName,
+      phone: info.telephone,
+      email: info.email
+    })
+  }
+
+  const handleUpdateRepresentatives = (reps: Representative[]) => {
+    setRepresentatives(reps)
+  }
+
   return (
     <div className='px-6 py-4'>
       <div className='flex justify-between items-center mb-6'>
-        <h2 className='text-2xl font-bold'>Profile</h2>
-        {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className='bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2'
-          >
-            <Edit2 className='size-4' />
-            Edit Profile
-          </button>
-        )}
+        <h2 className='text-2xl font-bold'>Profile & Company</h2>
+      </div>
+
+      {/* Sub-navigation tabs */}
+      <div className='flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg'>
+        <button
+          onClick={() => setActiveSubTab('personal')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+            activeSubTab === 'personal'
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <User className='size-4' />
+          Personal Profile
+        </button>
+        <button
+          onClick={() => setActiveSubTab('company')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+            activeSubTab === 'company'
+              ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+          }`}
+        >
+          <Building className='size-4' />
+          Company & Representatives
+        </button>
       </div>
 
       {message && (
@@ -93,7 +179,23 @@ export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabP
         </div>
       )}
 
-      <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
+      {/* Personal Profile Tab */}
+      {activeSubTab === 'personal' && (
+        <div>
+          <div className='flex justify-between items-center mb-6'>
+            <h3 className='text-xl font-semibold'>Personal Information</h3>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className='bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center gap-2'
+              >
+                <Edit2 className='size-4' />
+                Edit Profile
+              </button>
+            )}
+          </div>
+
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6'>
         <div className='flex items-start gap-8'>
           {/* Profile Picture Section */}
           <div className='flex flex-col items-center gap-4'>
@@ -240,7 +342,20 @@ export default function ProfileTab({ userProfile, onUpdateProfile }: ProfileTabP
             )}
           </div>
         </div>
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company & Representatives Tab */}
+      {activeSubTab === 'company' && (
+        <CompanyRepresentativesTab
+          companyInfo={companyInfo}
+          representatives={representatives}
+          onUpdateCompany={handleUpdateCompany}
+          onUpdateRepresentatives={handleUpdateRepresentatives}
+          userEmail={userProfile.email}
+        />
+      )}
     </div>
   )
 }
