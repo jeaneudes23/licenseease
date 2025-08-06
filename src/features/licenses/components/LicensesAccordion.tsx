@@ -54,7 +54,7 @@ export default function LicensesAccordion() {
       setError('')
 
       try {
-        const res = await fetch('http://127.0.0.1:5000/get_services', {
+        const res = await fetch('http://127.0.0.1:5002/get_services', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

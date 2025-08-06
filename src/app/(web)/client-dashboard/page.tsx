@@ -52,7 +52,7 @@ function ClientDashboardContent() {
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/applications', {
+      const response = await fetch('http://127.0.0.1:5002/applications', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ function ClientDashboardContent() {
     setServicesError('')
     try {
       // Try with direct fetch first (no auth required for public license data)
-      const response = await fetch('http://127.0.0.1:5000/get_services', {
+      const response = await fetch('http://127.0.0.1:5002/get_services', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ function ClientDashboardContent() {
     })
 
     try {
-      const data = await apiRequest('http://127.0.0.1:5000/applications', {
+      const data = await apiRequest('http://127.0.0.1:5002/applications', {
         method: 'POST',
         body: formData,
       })
