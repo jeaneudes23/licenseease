@@ -279,41 +279,82 @@ def login():
 def signin():
     """Handle Firebase token-based signin"""
     try:
+        print("=== SIGNIN REQUEST ===")
         data = request.get_json()
         token = data.get('token')
         
-        # In a real app, you would verify the Firebase token
-        # For now, we'll just return a mock response
+        print(f"Received token for signin: {token[:50] if token else 'None'}...")
+        
+        if not token:
+            return jsonify({"error": "Token is required"}), 400
+        
+        # In a real app, you would verify the Firebase token here
+        # For demo purposes, return a successful response
+        user_data = {
+            "id": "demo_user_" + str(hash(token))[-6:],
+            "email": "demo@example.com",
+            "firstName": "Demo",
+            "lastName": "User",
+            "company": "Demo Company",
+            "phone": "+250123456789",
+            "role": "client"
+        }
+        
+        print(f"Signin successful for user: {user_data['email']}")
+        
         return jsonify({
             "message": "Login successful",
-            "user": {
-                "id": "mock_user_id",
-                "email": "demo@example.com",
-                "firstName": "Demo",
-                "lastName": "User",
-                "company": "Demo Company",
-                "phone": "+250123456789",
-                "role": "client"
-            }
+            "user": user_data
         }), 200
         
     except Exception as e:
+        print(f"Signin error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/signup', methods=['POST'])
 def signup():
     """Handle Firebase user role assignment"""
     try:
+        print("=== SIGNUP REQUEST ===")
         data = request.get_json()
         uid = data.get('uid')
         role = data.get('role', 'client')
         
+        print(f"User signup: UID={uid}, Role={role}")
+        
+        if not uid:
+            return jsonify({"error": "UID is required"}), 400
+        
         # In a real app, you would store the user role in Firestore
-        # For now, we'll just return a success response
+        # For demo purposes, just return success
+        print(f"Signup successful for UID: {uid}")
+        
         return jsonify({
             "message": "User role assigned successfully",
             "uid": uid,
             "role": role
+        }), 200
+        
+    except Exception as e:
+        print(f"Signup error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/change-password', methods=['POST'])
+def change_password():
+    """Handle password change requests"""
+    try:
+        data = request.get_json()
+        current_password = data.get('currentPassword')
+        new_password = data.get('newPassword')
+        
+        # In a real app, you would:
+        # 1. Verify the current password
+        # 2. Update the password in Firebase Auth
+        # 3. Return success/error response
+        
+        # For demo purposes, just return success
+        return jsonify({
+            "message": "Password changed successfully"
         }), 200
         
     except Exception as e:
