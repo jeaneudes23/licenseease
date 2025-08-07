@@ -36,7 +36,7 @@ export default function ChangePasswordPage() {
     try {
       // Here you would typically call your backend API
       const token = localStorage.getItem('authToken')
-      const response = await fetch('http://127.0.0.1:5000/change-password', {
+      const response = await fetch('http://127.0.0.1:5002/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

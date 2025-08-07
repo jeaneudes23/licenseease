@@ -37,7 +37,7 @@ export default function PayPage({ params, searchParams }: Props) {
       
       // Update application status in backend
       const token = localStorage.getItem('authToken')
-      await fetch('http://127.0.0.1:5000/applications/payment-complete', {
+      await fetch('http://127.0.0.1:5002/applications/payment-complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

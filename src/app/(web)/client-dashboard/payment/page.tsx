@@ -251,7 +251,7 @@ export default function PaymentPage() {
       const totalAmountUSD = application.fees.application + application.fees.license
       
       // Create payment intent on the backend
-      const response = await fetch('http://127.0.0.1:5000/create-payment-intent', {
+      const response = await fetch('http://127.0.0.1:5002/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +314,7 @@ export default function PaymentPage() {
     try {
       const totalAmountUSD = application.fees.application + application.fees.license
       
-      const response = await fetch('http://127.0.0.1:5000/process-mobile-payment', {
+      const response = await fetch('http://127.0.0.1:5002/process-mobile-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
